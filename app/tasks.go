@@ -102,7 +102,57 @@ func (pane *TaskPane) addTaskToList(i int) *tview.List {
 	}(i))
 }
 
+// MoveTask moves the currently selected task by the given offset (-1 = up,
+// +1 = down) and persists the new order. Reordering is only meaningful within
+// a single project's list, so it is a no-op for the dynamic (date-based) views.
+func (pane *TaskPane) MoveTask(offset int) {
+	if projectPane.GetActiveProject() == nil {
+		statusBar.showForSeconds("[yellow::]Tasks can only be reordered within a project", 5)
+		return
+	}
+
+	from := pane.list.GetCurrentItem()
+	to := from + offset
+	if from < 0 || to < 0 || to >= len(pane.tasks) {
+		return
+	}
+
+	pane.tasks[from], pane.tasks[to] = pane.tasks[to], pane.tasks[from]
+	pane.persistTaskOrder()
+
+	pane.list.SetItemText(from, makeTaskListingTitle(pane.tasks[from]), "")
+	pane.list.SetItemText(to, makeTaskListingTitle(pane.tasks[to]), "")
+	pane.list.SetCurrentItem(to)
+}
+
+// persistTaskOrder rewrites the Rank of any task whose position in the list has
+// changed, so the current in-memory order survives a reload.
+func (pane *TaskPane) persistTaskOrder() {
+	for i := range pane.tasks {
+		rank := int64(i)
+		if pane.tasks[i].Rank == rank {
+			continue
+		}
+
+		pane.tasks[i].Rank = rank
+		if err := pane.taskRepo.UpdateField(&pane.tasks[i], "Rank", rank); err != nil {
+			statusBar.showForSeconds("[red::]Could not save task order: "+err.Error(), 5)
+		}
+	}
+}
+
 func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
+	// Shift+J / Shift+K reorder the selected task. Check the raw rune before
+	// the case-insensitive switch below, which would otherwise treat them as j/k.
+	switch event.Rune() {
+	case 'J':
+		pane.MoveTask(1)
+		return nil
+	case 'K':
+		pane.MoveTask(-1)
+		return nil
+	}
+
 	switch unicode.ToLower(event.Rune()) {
 	case 'j':
 		pane.list.SetCurrentItem(pane.list.GetCurrentItem() + 1)

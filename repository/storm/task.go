@@ -1,6 +1,7 @@
 package storm
 
 import (
+	"sort"
 	"time"
 
 	"github.com/asdine/storm/v3"
@@ -26,6 +27,15 @@ func (t *taskRepository) GetAllByProject(project model.Project) ([]model.Task, e
 	var tasks []model.Task
 	//err = db.Find("ProjetID", project.ID, &tasks, storm.Limit(10), storm.Skip(10), storm.Reverse())
 	err := t.DB.Find("ProjectID", project.ID, &tasks)
+
+	// Order by user-defined Rank. Tasks created before ranking existed all
+	// have Rank 0, so fall back to ID to keep a stable, insertion-order layout.
+	sort.SliceStable(tasks, func(i, j int) bool {
+		if tasks[i].Rank != tasks[j].Rank {
+			return tasks[i].Rank < tasks[j].Rank
+		}
+		return tasks[i].ID < tasks[j].ID
+	})
 
 	return tasks, err
 }

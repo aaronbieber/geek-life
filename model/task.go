@@ -9,4 +9,5 @@ type Task struct {
 	Details   string `json:"notes"`
 	Completed bool   `storm:"index",json:"completed"`
 	DueDate   int64  `storm:"index",json:"due_date,omitempty"`
+	Rank      int64  `storm:"index",json:"rank"`
 }
