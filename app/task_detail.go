@@ -149,7 +149,9 @@ func (td *TaskDetailPane) makeDateRow() *tview.Flex {
 		AddItem(blankCell, 1, 0, false).
 		AddItem(makeButton("[::u]+[::-]1", td.nextDaySelector), 4, 1, false).
 		AddItem(blankCell, 1, 0, false).
-		AddItem(makeButton("[::u]-[::-]1", td.prevDaySelector), 4, 1, false)
+		AddItem(makeButton("[::u]-[::-]1", td.prevDaySelector), 4, 1, false).
+		AddItem(blankCell, 1, 0, false).
+		AddItem(makeButton("[::u]u[::-]nset", td.unsetDateSelector), 8, 1, false)
 }
 
 func (td *TaskDetailPane) updateToggleDisplay() {
@@ -190,7 +192,7 @@ func (td *TaskDetailPane) setTaskDate(unixDate int64, update bool) {
 		td.taskDate.SetText(due.Format(dateLayoutISO))
 	} else {
 		td.taskDate.SetText("")
-		td.taskDateDisplay.SetText("[::u]D[::-]ue: [::d]Not Set")
+		td.taskDateDisplay.SetText("[::u]D[::-]ue: [::d]Not set")
 	}
 }
 
@@ -319,7 +321,7 @@ func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey
 	switch event.Key() {
 	case tcell.KeyEsc:
 		removeThirdCol()
-		taskPane.RefreshList() // reflect due-date (and other) changes in the list
+		taskPane.RefreshAfterEdit() // reflect date/color changes; re-sort dynamic lists
 		app.SetFocus(taskPane)
 		contents.AddItem(projectDetailPane, 25, 0, false)
 		return nil
@@ -351,6 +353,9 @@ func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey
 			return nil
 		case 'o':
 			td.todaySelector()
+			return nil
+		case 'u':
+			td.unsetDateSelector()
 			return nil
 		case '+':
 			td.nextDaySelector()
@@ -387,4 +392,8 @@ func (td *TaskDetailPane) nextDaySelector() {
 
 func (td *TaskDetailPane) prevDaySelector() {
 	td.setTaskDate(parseDateInputOrCurrent(td.taskDate.GetText()).AddDate(0, 0, -1).Unix(), true)
+}
+
+func (td *TaskDetailPane) unsetDateSelector() {
+	td.setTaskDate(0, true)
 }

@@ -372,6 +372,34 @@ func (pane *TaskPane) RefreshList() {
 	pane.list.SetCurrentItem(selected)
 }
 
+// RefreshAfterEdit updates the task list after returning from the detail pane.
+// For a project the order is user-defined, so titles are just re-rendered in
+// place. For a dynamic list the ordering (and membership) depends on due dates,
+// so the list is reloaded to re-sort it; the selection then follows the edited
+// task to its new position by ID.
+func (pane *TaskPane) RefreshAfterEdit() {
+	if projectPane.GetActiveProject() != nil {
+		pane.RefreshList()
+		return
+	}
+
+	editedID := int64(-1)
+	if pane.activeTask != nil {
+		editedID = pane.activeTask.ID
+	}
+
+	if pane.reloadList != nil {
+		pane.reloadList()
+	}
+
+	for i := range pane.tasks {
+		if pane.tasks[i].ID == editedID {
+			pane.list.SetCurrentItem(i)
+			break
+		}
+	}
+}
+
 func (pane TaskPane) setHintMessage() {
 	pane.hint.SetText("Select a list on the left and press enter to view tasks.\n" +
 		"Underlined letters indicate available keys.\n" +
