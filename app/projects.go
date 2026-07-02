@@ -21,6 +21,7 @@ type ProjectPane struct {
 	repo                repository.ProjectRepository
 	activeProject       *model.Project
 	projectListStarting int // The index in list where project names starts
+	dynamicListStarting int // The index in list where dynamic lists start
 }
 
 // NewProjectPane initializes
@@ -70,6 +71,7 @@ func (pane *ProjectPane) addNewProject() {
 
 func (pane *ProjectPane) addDynamicLists() {
 	pane.addSection("Dynamic Lists")
+	pane.dynamicListStarting = pane.list.GetItemCount()
 	pane.list.AddItem("- Today", "", 0, func() { taskPane.LoadDynamicList("today") })
 	pane.list.AddItem("- Tomorrow", "", 0, func() { taskPane.LoadDynamicList("tomorrow") })
 	pane.list.AddItem("- Upcoming", "", 0, func() { taskPane.LoadDynamicList("upcoming") })
@@ -112,6 +114,21 @@ func (pane *ProjectPane) addSection(name string) {
 }
 
 func (pane *ProjectPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
+	switch event.Rune() {
+	case 'J':
+		// Jump down to the first project if the cursor is above it and a project exists
+		if pane.list.GetCurrentItem() < pane.projectListStarting && len(pane.projects) > 0 {
+			pane.list.SetCurrentItem(pane.projectListStarting)
+		}
+		return nil
+	case 'K':
+		// Jump up to the first dynamic list item if the cursor is below it
+		if pane.list.GetCurrentItem() > pane.dynamicListStarting {
+			pane.list.SetCurrentItem(pane.dynamicListStarting)
+		}
+		return nil
+	}
+
 	switch unicode.ToLower(event.Rune()) {
 	case 'j':
 		pane.list.SetCurrentItem(pane.list.GetCurrentItem() + 1)
