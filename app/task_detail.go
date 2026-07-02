@@ -319,6 +319,7 @@ func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey
 	switch event.Key() {
 	case tcell.KeyEsc:
 		removeThirdCol()
+		taskPane.RefreshList() // reflect due-date (and other) changes in the list
 		app.SetFocus(taskPane)
 		contents.AddItem(projectDetailPane, 25, 0, false)
 		return nil

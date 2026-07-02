@@ -362,6 +362,16 @@ func (pane *TaskPane) ReloadCurrentTask() {
 	taskDetailPane.SetTask(pane.activeTask)
 }
 
+// RefreshList re-renders each visible task title so changes made in the detail
+// pane (e.g. due-date color) take effect, without altering the current selection.
+func (pane *TaskPane) RefreshList() {
+	selected := pane.list.GetCurrentItem()
+	for i := range pane.tasks {
+		pane.list.SetItemText(i, makeTaskListingTitle(pane.tasks[i]), "")
+	}
+	pane.list.SetCurrentItem(selected)
+}
+
 func (pane TaskPane) setHintMessage() {
 	pane.hint.SetText("Select a list on the left and press enter to view tasks.\n" +
 		"Underlined letters indicate available keys.\n" +
