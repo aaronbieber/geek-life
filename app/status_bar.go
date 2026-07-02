@@ -10,6 +10,7 @@ import (
 type StatusBar struct {
 	*tview.Pages
 	message   *tview.TextView
+	hints     *tview.TextView
 	container *tview.Application
 }
 
@@ -30,20 +31,22 @@ func prepareStatusBar(app *tview.Application) *StatusBar {
 		container: app,
 	}
 
+	// Context-aware key hints. The content is left-aligned and refreshed before
+	// every draw (see setKeyboardShortcuts) so it always reflects the focused
+	// context; wrapping is disabled so a long list truncates on the single row.
+	statusBar.hints = tview.NewTextView().SetDynamicColors(true).SetWrap(false)
+
 	statusBar.AddPage(messagePage, statusBar.message, true, true)
-	statusBar.AddPage(defaultPage,
-		tview.NewGrid(). // Content will not be modified, So, no need to declare explicitly
-					SetColumns(0, 0, 0, 0).
-					SetRows(0).
-					AddItem(tview.NewTextView().SetText("Navigate List: ↓,↑ / j,k"), 0, 0, 1, 1, 0, 0, false).
-					AddItem(tview.NewTextView().SetText("New Task/Project: n").SetTextAlign(tview.AlignCenter), 0, 1, 1, 1, 0, 0, false).
-					AddItem(tview.NewTextView().SetText("Step back: Esc").SetTextAlign(tview.AlignCenter), 0, 2, 1, 1, 0, 0, false).
-					AddItem(tview.NewTextView().SetText("Quit: Ctrl+C").SetTextAlign(tview.AlignRight), 0, 3, 1, 1, 0, 0, false),
-		true,
-		true,
-	)
+	statusBar.AddPage(defaultPage, statusBar.hints, true, true)
+
+	statusBar.updateHints()
 
 	return statusBar
+}
+
+// updateHints refreshes the key-hint row for the currently focused context.
+func (bar *StatusBar) updateHints() {
+	bar.hints.SetText(formatKeyHints(currentKeyHints()))
 }
 
 func (bar *StatusBar) restore() {

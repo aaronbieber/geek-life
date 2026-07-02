@@ -63,7 +63,7 @@ func NewTaskPane(projectRepo repository.ProjectRepository, taskRepo repository.T
 			pane.newTask.SetText("")
 			statusBar.showForSeconds("[yellow::]Task created. Add another task or press Esc.", 5)
 		case tcell.KeyEsc:
-			app.SetFocus(pane)
+			pane.hideNewTaskInput()
 		}
 	})
 
@@ -164,7 +164,7 @@ func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 		app.SetFocus(projectPane)
 		return nil
 	case 'n':
-		app.SetFocus(pane.newTask)
+		pane.showNewTaskInput()
 		return nil
 	}
 
@@ -183,7 +183,25 @@ func (pane *TaskPane) LoadProjectTasks(project model.Project) {
 	}
 
 	pane.RemoveItem(pane.hint)
+}
+
+// showNewTaskInput reveals the new-task input at the bottom of the pane and
+// focuses it. Tasks can only be added within a project, so it is a no-op for the
+// dynamic (date-based) lists, which have no project to add to.
+func (pane *TaskPane) showNewTaskInput() {
+	if projectPane.GetActiveProject() == nil {
+		return
+	}
+	pane.newTask.SetText("")
+	pane.RemoveItem(pane.newTask) // avoid duplicating if already shown
 	pane.AddItem(pane.newTask, 1, 0, false)
+	app.SetFocus(pane.newTask)
+}
+
+// hideNewTaskInput removes the new-task input and returns focus to the task list.
+func (pane *TaskPane) hideNewTaskInput() {
+	pane.RemoveItem(pane.newTask)
+	app.SetFocus(pane)
 }
 
 // LoadDynamicList loads tasks based on logic key
@@ -193,54 +211,59 @@ func (pane *TaskPane) LoadDynamicList(logic string) {
 
 	today := toDate(time.Now())
 	zeroTime := time.Time{}
-	rangeDesc := ""
 
 	switch logic {
 	case "all":
 		tasks, err = pane.taskRepo.GetAll()
-		rangeDesc = "All tasks"
 
 	case "today":
 		tasks, err = pane.taskRepo.GetAllByDateRange(zeroTime, today)
-		rangeDesc = "Today (and overdue)"
 
 	case "tomorrow":
 		tomorrow := today.AddDate(0, 0, 1)
 		tasks, err = pane.taskRepo.GetAllByDate(tomorrow)
-		rangeDesc = "Tomorrow"
 
 	case "upcoming":
 		week := today.Add(7 * 24 * time.Hour)
 		tasks, err = pane.taskRepo.GetAllByDateRange(today, week)
-		rangeDesc = "Upcoming (next 7 days)"
 
 	case "unscheduled":
 		tasks, err = pane.taskRepo.GetAllByDate(zeroTime)
-		rangeDesc = "Unscheduled (task with no due date) "
 	}
 
 	projectPane.activeProject = nil
 	taskPane.ClearList()
+	removeThirdCol()
 
-	if err == storm.ErrNotFound {
-		statusBar.showForSeconds("[yellow]No Task in list - "+rangeDesc, 5)
-		pane.SetList(tasks)
-	} else if err != nil {
+	// storm reports ErrNotFound for an empty result, which is not a real error
+	// here - it just means the list has no tasks.
+	if err != nil && err != storm.ErrNotFound {
 		statusBar.showForSeconds("[red]Error: "+err.Error(), 5)
-	} else {
-		if logic == "all" {
-			sortAllTasks(tasks)
-		} else {
-			sort.Slice(tasks, func(i, j int) bool { return tasks[i].ProjectID < tasks[j].ProjectID })
-		}
-		pane.SetList(tasks)
-		app.SetFocus(taskPane)
-
-		statusBar.showForSeconds("[yellow] Displaying tasks of "+rangeDesc, 5)
+		return
 	}
 
-	pane.RemoveItem(pane.hint)
-	removeThirdCol()
+	if logic == "all" {
+		sortAllTasks(tasks)
+	} else {
+		sort.Slice(tasks, func(i, j int) bool { return tasks[i].ProjectID < tasks[j].ProjectID })
+	}
+
+	pane.SetList(tasks)
+	app.SetFocus(taskPane)
+
+	if len(tasks) == 0 {
+		pane.showListMessage("No tasks")
+	} else {
+		pane.RemoveItem(pane.hint)
+	}
+}
+
+// showListMessage displays a centered message in the task list area, in the same
+// place as the initial splash/hint text. Used when a list has no tasks to show.
+func (pane *TaskPane) showListMessage(message string) {
+	pane.hint.SetText(message)
+	pane.RemoveItem(pane.hint) // avoid duplicating if already present
+	pane.AddItem(pane.hint, 0, 1, false)
 }
 
 // sortAllTasks orders tasks for the "All" dynamic list: forward chronological by
@@ -303,11 +326,8 @@ func (pane *TaskPane) ReloadCurrentTask() {
 }
 
 func (pane TaskPane) setHintMessage() {
-	if len(projectPane.projects) == 0 {
-		pane.hint.SetText("Welcome to the organized life!\n------------------------------\n Create TaskList/Project at the bottom of Projects pane.\n (Press p,n) \n\nHelp - https://bit.ly/cli-task")
-	} else {
-		pane.hint.SetText("Select a TaskList/Project (Press Enter) to load tasks.\nOr create a new Project (Press p,n).\n\nHelp - https://bit.ly/cli-task")
-	}
-
-	// Add: For help - https://bit.ly/cli-task
+	pane.hint.SetText("Select a list on the left and press enter to view tasks.\n" +
+		"Underlined letters indicate available keys.\n" +
+		"Additional key hints are shown at the bottom of the screen.\n\n" +
+		"Press ? for more help.")
 }

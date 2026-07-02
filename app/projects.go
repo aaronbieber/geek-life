@@ -38,17 +38,33 @@ func NewProjectPane(repo repository.ProjectRepository) *ProjectPane {
 		case tcell.KeyEnter:
 			pane.addNewProject()
 		case tcell.KeyEsc:
-			app.SetFocus(projectPane)
+			pane.hideNewProjectInput()
 		}
 	})
 
-	pane.AddItem(pane.list, 0, 1, true).
-		AddItem(pane.newProject, 1, 0, false)
+	// The new-project input is hidden until the user presses "n".
+	pane.AddItem(pane.list, 0, 1, true)
 
 	pane.SetBorder(true).SetTitle("[::u]P[::-]rojects")
 	pane.loadListItems(false)
 
 	return &pane
+}
+
+// showNewProjectInput reveals the new-project input at the bottom of the pane
+// and focuses it.
+func (pane *ProjectPane) showNewProjectInput() {
+	pane.newProject.SetText("")
+	pane.RemoveItem(pane.newProject) // avoid duplicating if already shown
+	pane.AddItem(pane.newProject, 1, 0, false)
+	app.SetFocus(pane.newProject)
+}
+
+// hideNewProjectInput removes the new-project input and returns focus to the
+// project list.
+func (pane *ProjectPane) hideNewProjectInput() {
+	pane.RemoveItem(pane.newProject)
+	app.SetFocus(projectPane)
 }
 
 func (pane *ProjectPane) addNewProject() {
@@ -64,8 +80,10 @@ func (pane *ProjectPane) addNewProject() {
 	} else {
 		statusBar.showForSeconds(fmt.Sprintf("[yellow::]Project %s created. Press n to start adding new tasks.", name), 10)
 		pane.projects = append(pane.projects, project)
-		pane.addProjectToList(len(pane.projects)-1, true)
 		pane.newProject.SetText("")
+		// Hide the input; activating the new project moves focus to the task pane.
+		pane.RemoveItem(pane.newProject)
+		pane.addProjectToList(len(pane.projects)-1, true)
 	}
 }
 
@@ -94,7 +112,7 @@ func (pane *ProjectPane) addProjectList() {
 		pane.addProjectToList(i, false)
 	}
 
-	pane.list.SetCurrentItem(pane.dynamicListStarting + 1) // Keep "Today" selected on start
+	pane.list.SetCurrentItem(pane.dynamicListStarting) // Select "All" on start
 }
 
 func (pane *ProjectPane) addProjectToList(i int, selectItem bool) {
@@ -138,7 +156,7 @@ func (pane *ProjectPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey 
 		pane.list.SetCurrentItem(pane.list.GetCurrentItem() - 1)
 		return nil
 	case 'n':
-		app.SetFocus(pane.newProject)
+		pane.showNewProjectInput()
 		return nil
 	}
 

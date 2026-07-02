@@ -63,6 +63,13 @@ func main() {
 
 		setKeyboardShortcuts()
 
+		// Keep the status bar's key hints in sync with the focused context,
+		// regardless of how focus changed (keyboard, mouse, or done handlers).
+		app.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
+			statusBar.updateHints()
+			return false
+		})
+
 		if err := app.SetRoot(layout, true).EnableMouse(true).Run(); err != nil {
 			panic(err)
 		}
