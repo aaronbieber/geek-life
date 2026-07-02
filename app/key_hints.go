@@ -38,6 +38,9 @@ func formatKeyHints(hints []keyHint) string {
 // keyHintText is the full status-bar text for the current state: the filter
 // chord sub-menu when it is active, otherwise the focused context's hints.
 func keyHintText() string {
+	if deleteConfirmActive {
+		return " Deleting " + deleteConfirmName + ", are you sure? " + renderHints(deleteConfirmOptions)
+	}
 	if filterChordActive {
 		return " [::b]Filter:[::-] " + renderHints(filterOptions)
 	}
@@ -91,9 +94,10 @@ func contextKeyHints() []keyHint {
 // titles, so they are not repeated here.
 func (pane *ProjectPane) keyHints() []keyHint {
 	return []keyHint{
-		{"j,k", "Navigate list"},
+		{"j,k", "Up/down"},
 		{"enter", "Open"},
 		{"n", "New project"},
+		{"d", "Delete project"},
 	}
 }
 
@@ -101,13 +105,14 @@ func (pane *ProjectPane) keyHints() []keyHint {
 // task" and task reordering are only meaningful inside a real project (dynamic
 // lists have no project to add to and cannot be reordered).
 func (pane *TaskPane) keyHints() []keyHint {
-	hints := []keyHint{{"j,k", "Navigate list"}}
+	hints := []keyHint{{"j,k", "Up/down"}}
 
 	inProject := projectPane.GetActiveProject() != nil
 	if inProject {
-		hints = append(hints, keyHint{"shift+j,k", "Reorder task"})
+		hints = append(hints, keyHint{"J/K", "Move task"})
 	}
-	hints = append(hints, keyHint{"enter", "Open task"})
+	hints = append(hints, keyHint{"enter", "Open"})
+	hints = append(hints, keyHint{"d", "Toggle done"})
 	if inProject {
 		hints = append(hints, keyHint{"n", "New task"})
 	}

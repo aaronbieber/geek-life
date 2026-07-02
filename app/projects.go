@@ -158,9 +158,58 @@ func (pane *ProjectPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey 
 	case 'n':
 		pane.showNewProjectInput()
 		return nil
+	case 'd':
+		pane.startDeleteSelected()
+		return nil
 	}
 
 	return event
+}
+
+// deleteConfirmActive is true while the "are you sure?" prompt for deleting a
+// project is showing on the status bar. deleteConfirmName is the project name
+// used in that prompt.
+var (
+	deleteConfirmActive bool
+	deleteConfirmName   string
+)
+
+// deleteConfirmOptions are the choices shown in the delete confirmation prompt.
+var deleteConfirmOptions = []keyHint{
+	{"y", "Yes"},
+	{"n", "No"},
+}
+
+// startDeleteSelected begins deleting the project under the cursor. The project
+// is opened first (so its tasks are visible), then a confirmation prompt is
+// shown on the status bar. Does nothing when the selection is not a project.
+func (pane *ProjectPane) startDeleteSelected() {
+	idx := pane.list.GetCurrentItem() - pane.projectListStarting
+	if idx < 0 || idx >= len(pane.projects) {
+		return
+	}
+
+	if pane.activeProject == nil || pane.activeProject.ID != pane.projects[idx].ID {
+		pane.activateProject(idx)
+	}
+	app.SetFocus(projectPane) // keep the projects pane focused during the prompt
+
+	deleteConfirmName = pane.projects[idx].Title
+	deleteConfirmActive = true
+}
+
+// handleDeleteConfirm resolves the delete confirmation prompt. "y" deletes the
+// active project; any other key (including "n" and Esc) cancels.
+func handleDeleteConfirm(event *tcell.EventKey) *tcell.EventKey {
+	deleteConfirmActive = false
+
+	if unicode.ToLower(event.Rune()) == 'y' {
+		projectPane.RemoveActivateProject()
+	} else {
+		app.SetFocus(projectPane)
+	}
+
+	return nil
 }
 
 func (pane *ProjectPane) activateProject(idx int) {
@@ -180,9 +229,13 @@ func (pane *ProjectPane) RemoveActivateProject() {
 		for i := range taskPane.tasks {
 			_ = taskRepo.Delete(&taskPane.tasks[i])
 		}
-		taskPane.ClearList()
 
-		statusBar.showForSeconds("[lime]Removed Project: "+pane.activeProject.Title, 5)
+		title := pane.activeProject.Title
+		pane.activeProject = nil
+		// No project/list is shown anymore, so fall back to the splash screen.
+		taskPane.ShowSplash()
+
+		statusBar.showForSeconds("[lime]Removed Project: "+title, 5)
 		removeThirdCol()
 
 		pane.loadListItems(true)

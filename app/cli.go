@@ -95,6 +95,9 @@ func setKeyboardShortcuts() *tview.Application {
 		if filterChordActive {
 			return handleFilterChord(event)
 		}
+		if deleteConfirmActive {
+			return handleDeleteConfirm(event)
+		}
 
 		// Global shortcuts
 		switch unicode.ToLower(event.Rune()) {

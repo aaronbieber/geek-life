@@ -169,6 +169,13 @@ func (pane *TaskPane) persistTaskOrder() {
 }
 
 func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
+	// Handle Esc here (not via the list's done func) so it works even when the
+	// pane was focused by a mouse click rather than keyboard navigation.
+	if event.Key() == tcell.KeyEsc {
+		app.SetFocus(projectPane)
+		return nil
+	}
+
 	// Shift+J / Shift+K reorder the selected task. Check the raw rune before
 	// the case-insensitive switch below, which would otherwise treat them as j/k.
 	switch event.Rune() {
@@ -195,6 +202,9 @@ func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	case 'f':
 		filterChordActive = true
+		return nil
+	case 'd':
+		pane.toggleSelectedTaskDone()
 		return nil
 	}
 
@@ -303,6 +313,15 @@ func (pane *TaskPane) showListMessage(message string) {
 	pane.AddItem(pane.hint, 0, 1, false)
 }
 
+// ShowSplash clears the pane and displays the initial splash/help text. Used when
+// no task list is displayed, e.g. after deleting a project.
+func (pane *TaskPane) ShowSplash() {
+	pane.ClearList()
+	pane.setHintMessage()
+	pane.RemoveItem(pane.hint) // avoid duplicating if already present
+	pane.AddItem(pane.hint, 0, 1, false)
+}
+
 // sortAllTasks orders tasks for the "All" dynamic list: forward chronological by
 // due date (most overdue first, then longest-until-due), with undated tasks last.
 // Tasks sharing a due-date bucket are grouped by project, and within a project
@@ -387,16 +406,56 @@ func (pane *TaskPane) RefreshAfterEdit() {
 	if pane.activeTask != nil {
 		editedID = pane.activeTask.ID
 	}
+	prev := pane.list.GetCurrentItem()
 
 	if pane.reloadList != nil {
 		pane.reloadList()
 	}
 
+	pane.selectTaskByID(editedID, prev)
+}
+
+// toggleSelectedTaskDone flips the done state of the task under the cursor and
+// reloads the list so any active filter is respected (e.g. an item marked done
+// disappears from a "not done" filtered list). The selection follows the task
+// if it remains, otherwise it stays near its former position.
+func (pane *TaskPane) toggleSelectedTaskDone() {
+	idx := pane.list.GetCurrentItem()
+	if idx < 0 || idx >= len(pane.tasks) {
+		return
+	}
+
+	task := &pane.tasks[idx]
+	done := !task.Completed
+	if err := pane.taskRepo.UpdateField(task, "Completed", done); err != nil {
+		statusBar.showForSeconds("[red::]Could not update task: "+err.Error(), 5)
+		return
+	}
+	editedID := task.ID
+
+	if pane.reloadList != nil {
+		pane.reloadList()
+	}
+
+	pane.selectTaskByID(editedID, idx)
+}
+
+// selectTaskByID moves the selection to the task with the given ID. If it is no
+// longer in the list (e.g. filtered out), the selection falls back to the item
+// near fallbackIdx.
+func (pane *TaskPane) selectTaskByID(id int64, fallbackIdx int) {
 	for i := range pane.tasks {
-		if pane.tasks[i].ID == editedID {
+		if pane.tasks[i].ID == id {
 			pane.list.SetCurrentItem(i)
-			break
+			return
 		}
+	}
+
+	if n := len(pane.tasks); n > 0 {
+		if fallbackIdx >= n {
+			fallbackIdx = n - 1
+		}
+		pane.list.SetCurrentItem(fallbackIdx)
 	}
 }
 

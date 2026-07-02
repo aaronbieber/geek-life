@@ -15,10 +15,6 @@ type ProjectDetailPane struct {
 	project *model.Project
 }
 
-func removeProjectWithConfirmation() {
-	AskYesNo("Do you want to delete Project?", projectPane.RemoveActivateProject)
-}
-
 func clearCompletedWithConfirmation() {
 	AskYesNo("Do you want to clear completed tasks?", taskPane.ClearCompletedTasks)
 }
@@ -28,13 +24,9 @@ func NewProjectDetailPane() *ProjectDetailPane {
 	pane := ProjectDetailPane{
 		Flex: tview.NewFlex().SetDirection(tview.FlexRow),
 	}
-	deleteBtn := makeButton("[::u]D[::-]elete Project", removeProjectWithConfirmation)
 	clearBtn := makeButton("[::u]C[::-]lear Completed Tasks", clearCompletedWithConfirmation)
 
-	deleteBtn.SetBackgroundColor(tcell.ColorRed)
 	pane.
-		AddItem(deleteBtn, 3, 1, false).
-		AddItem(blankCell, 1, 1, false).
 		AddItem(clearBtn, 3, 1, false).
 		AddItem(blankCell, 0, 1, false)
 
@@ -55,9 +47,6 @@ func (pd *ProjectDetailPane) isShowing() bool {
 
 func (pd *ProjectDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 	switch unicode.ToLower(event.Rune()) {
-	case 'd':
-		removeProjectWithConfirmation()
-		return nil
 	case 'c':
 		clearCompletedWithConfirmation()
 		return nil
