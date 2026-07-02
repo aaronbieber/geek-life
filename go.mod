@@ -27,3 +27,8 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
+
+// Forked to make the task-note editor wrap on word boundaries (prose wrap)
+// instead of mid-word, and to avoid wrapped whitespace leading a visual line.
+// See third_party/femto/cellview.go.
+replace github.com/pgavlin/femto => ./third_party/femto

@@ -23,6 +23,16 @@ import (
 const dateLayoutISO = "2006-01-02"
 const dateLayoutHuman = "02 Jan, Monday"
 
+// taskNoteDefaultHeight is the preferred height (in rows) of the task note
+// editor when the terminal is tall enough to accommodate it.
+const taskNoteDefaultHeight = 30
+
+// taskDetailFixedRows is the number of rows the detail pane uses for everything
+// other than the note editor and the flexible spacer (header, date row, labels,
+// hints, status toggle, and the blank separators between them). It is used to
+// work out how much vertical space is left for the note editor.
+const taskDetailFixedRows = 13
+
 // TaskDetailPane displays detailed info of a Task
 type TaskDetailPane struct {
 	*tview.Flex
@@ -70,13 +80,32 @@ func NewTaskDetailPane(taskRepo repository.TaskRepository) *TaskDetailPane {
 		AddItem(pane.makeDateRow(), 1, 1, true).
 		AddItem(blankCell, 1, 1, false).
 		AddItem(editorLabel, 1, 1, false).
-		AddItem(pane.taskDetailView, 15, 4, false).
+		AddItem(pane.taskDetailView, taskNoteDefaultHeight, 0, false).
 		AddItem(editorHelp, 1, 1, false).
 		AddItem(blankCell, 0, 1, false).
 		AddItem(toggleHint, 1, 1, false).
 		AddItem(pane.taskStatusToggle, 3, 1, false)
 
 	pane.SetBorder(true).SetTitle("Task Detail")
+
+	// Keep the note editor at its default height when the terminal is tall
+	// enough, but shrink it to fit when the terminal is shorter. Recomputed on
+	// every draw so it adapts to resizes. The returned rect is the pane's inner
+	// area, which the Flex layout reads back via GetInnerRect.
+	pane.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
+		innerX, innerY, innerWidth, innerHeight := x+1, y+1, width-2, height-2
+
+		noteHeight := taskNoteDefaultHeight
+		if avail := innerHeight - taskDetailFixedRows; avail < noteHeight {
+			noteHeight = avail
+		}
+		if noteHeight < 1 {
+			noteHeight = 1
+		}
+		pane.ResizeItem(pane.taskDetailView, noteHeight, 0)
+
+		return innerX, innerY, innerWidth, innerHeight
+	})
 
 	return &pane
 }
