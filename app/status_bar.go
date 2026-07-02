@@ -46,7 +46,7 @@ func prepareStatusBar(app *tview.Application) *StatusBar {
 
 // updateHints refreshes the key-hint row for the currently focused context.
 func (bar *StatusBar) updateHints() {
-	bar.hints.SetText(formatKeyHints(currentKeyHints()))
+	bar.hints.SetText(keyHintText())
 }
 
 func (bar *StatusBar) restore() {

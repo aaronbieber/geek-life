@@ -19,15 +19,30 @@ type keyHint struct {
 // quitHint is available in every context (tview stops the app on Ctrl+C).
 var quitHint = keyHint{"ctrl+c", "Quit"}
 
-// formatKeyHints renders hints left-aligned and separated by two spaces, as
-// "<key>: <operation>", with the key colorized.
-func formatKeyHints(hints []keyHint) string {
+// renderHints joins hints as "<key>: <operation>" (key colorized), separated by
+// two spaces.
+func renderHints(hints []keyHint) string {
 	parts := make([]string, 0, len(hints))
 	for _, h := range hints {
 		parts = append(parts, fmt.Sprintf("[yellow]%s[-]: %s", h.key, h.op))
 	}
 
-	return " " + strings.Join(parts, "  ")
+	return strings.Join(parts, "  ")
+}
+
+// formatKeyHints renders hints left-aligned for the status bar.
+func formatKeyHints(hints []keyHint) string {
+	return " " + renderHints(hints)
+}
+
+// keyHintText is the full status-bar text for the current state: the filter
+// chord sub-menu when it is active, otherwise the focused context's hints.
+func keyHintText() string {
+	if filterChordActive {
+		return " [::b]Filter:[::-] " + renderHints(filterOptions)
+	}
+
+	return formatKeyHints(currentKeyHints())
 }
 
 // currentKeyHints resolves the hints for the currently focused context.
@@ -96,6 +111,7 @@ func (pane *TaskPane) keyHints() []keyHint {
 	if inProject {
 		hints = append(hints, keyHint{"n", "New task"})
 	}
+	hints = append(hints, keyHint{"f", "Filter"})
 	hints = append(hints, keyHint{"esc", "Back"})
 
 	return hints

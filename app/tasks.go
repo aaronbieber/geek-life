@@ -25,6 +25,13 @@ type TaskPane struct {
 	projectRepo repository.ProjectRepository
 	taskRepo    repository.TaskRepository
 	hint        *tview.TextView
+
+	// filter selects which tasks the current list displays (done/not done/all).
+	// It persists across lists and is re-applied whenever a list is loaded.
+	filter taskFilter
+	// reloadList re-runs the loader for the currently displayed list (project or
+	// dynamic), so a filter change can re-render it. Set on every list load.
+	reloadList func()
 }
 
 // NewTaskPane initializes and configures a TaskPane
@@ -71,7 +78,8 @@ func NewTaskPane(projectRepo repository.ProjectRepository, taskRepo repository.T
 		AddItem(pane.list, 0, 1, true).
 		AddItem(pane.hint, 0, 1, false)
 
-	pane.SetBorder(true).SetTitle("[::u]T[::-]asks")
+	pane.SetBorder(true)
+	pane.updateTitle()
 	pane.setHintMessage()
 
 	return &pane
@@ -86,14 +94,33 @@ func (pane *TaskPane) ClearList() {
 	pane.RemoveItem(pane.newTask)
 }
 
-// SetList Sets a list of tasks to be displayed
+// SetList Sets a list of tasks to be displayed, honoring the active filter.
 func (pane *TaskPane) SetList(tasks []model.Task) {
 	pane.ClearList()
-	pane.tasks = tasks
+	pane.tasks = filterTasks(tasks, pane.filter)
 
 	for i := range pane.tasks {
 		pane.addTaskToList(i)
 	}
+}
+
+// applyFilter records the chosen filter and re-renders the current list.
+func (pane *TaskPane) applyFilter(f taskFilter) {
+	pane.filter = f
+	pane.updateTitle()
+	if pane.reloadList != nil {
+		pane.reloadList()
+	}
+}
+
+// updateTitle sets the pane title, appending the active filter's name in
+// parentheses (e.g. "Tasks (Not done)"); no suffix when no filter is active.
+func (pane *TaskPane) updateTitle() {
+	title := "[::u]T[::-]asks"
+	if name := pane.filter.name(); name != "" {
+		title += " (" + name + ")"
+	}
+	pane.SetTitle(title)
 }
 
 func (pane *TaskPane) addTaskToList(i int) *tview.List {
@@ -166,6 +193,9 @@ func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 	case 'n':
 		pane.showNewTaskInput()
 		return nil
+	case 'f':
+		filterChordActive = true
+		return nil
 	}
 
 	return event
@@ -173,16 +203,21 @@ func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 
 // LoadProjectTasks loads tasks of a project in taskPane
 func (pane *TaskPane) LoadProjectTasks(project model.Project) {
-	var tasks []model.Task
-	var err error
+	pane.reloadList = func() { pane.LoadProjectTasks(project) }
 
-	if tasks, err = taskRepo.GetAllByProject(project); err != nil && err != storm.ErrNotFound {
+	tasks, err := taskRepo.GetAllByProject(project)
+	if err != nil && err != storm.ErrNotFound {
 		statusBar.showForSeconds("[red::]Error: "+err.Error(), 5)
-	} else {
-		pane.SetList(tasks)
+		return
 	}
 
-	pane.RemoveItem(pane.hint)
+	pane.SetList(tasks)
+
+	if len(pane.tasks) == 0 {
+		pane.showListMessage("No tasks")
+	} else {
+		pane.RemoveItem(pane.hint)
+	}
 }
 
 // showNewTaskInput reveals the new-task input at the bottom of the pane and
@@ -206,6 +241,8 @@ func (pane *TaskPane) hideNewTaskInput() {
 
 // LoadDynamicList loads tasks based on logic key
 func (pane *TaskPane) LoadDynamicList(logic string) {
+	pane.reloadList = func() { pane.LoadDynamicList(logic) }
+
 	var tasks []model.Task
 	var err error
 

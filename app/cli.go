@@ -91,6 +91,11 @@ func setKeyboardShortcuts() *tview.Application {
 			return event
 		}
 
+		// While a key chord is active, the next key selects an option.
+		if filterChordActive {
+			return handleFilterChord(event)
+		}
+
 		// Global shortcuts
 		switch unicode.ToLower(event.Rune()) {
 		case 'p':
