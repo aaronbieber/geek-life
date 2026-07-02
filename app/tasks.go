@@ -196,6 +196,10 @@ func (pane *TaskPane) LoadDynamicList(logic string) {
 	rangeDesc := ""
 
 	switch logic {
+	case "all":
+		tasks, err = pane.taskRepo.GetAll()
+		rangeDesc = "All tasks"
+
 	case "today":
 		tasks, err = pane.taskRepo.GetAllByDateRange(zeroTime, today)
 		rangeDesc = "Today (and overdue)"
@@ -224,7 +228,11 @@ func (pane *TaskPane) LoadDynamicList(logic string) {
 	} else if err != nil {
 		statusBar.showForSeconds("[red]Error: "+err.Error(), 5)
 	} else {
-		sort.Slice(tasks, func(i, j int) bool { return tasks[i].ProjectID < tasks[j].ProjectID })
+		if logic == "all" {
+			sortAllTasks(tasks)
+		} else {
+			sort.Slice(tasks, func(i, j int) bool { return tasks[i].ProjectID < tasks[j].ProjectID })
+		}
 		pane.SetList(tasks)
 		app.SetFocus(taskPane)
 
@@ -233,6 +241,36 @@ func (pane *TaskPane) LoadDynamicList(logic string) {
 
 	pane.RemoveItem(pane.hint)
 	removeThirdCol()
+}
+
+// sortAllTasks orders tasks for the "All" dynamic list: forward chronological by
+// due date (most overdue first, then longest-until-due), with undated tasks last.
+// Tasks sharing a due-date bucket are grouped by project, and within a project
+// they keep their natural list order (Rank, then ID) so that tasks adjacent in a
+// project stay adjacent here when they share — or both lack — a due date.
+func sortAllTasks(tasks []model.Task) {
+	sort.SliceStable(tasks, func(i, j int) bool {
+		a, b := tasks[i], tasks[j]
+
+		// Dated tasks come before undated ones.
+		aDated, bDated := a.DueDate != 0, b.DueDate != 0
+		if aDated != bDated {
+			return aDated
+		}
+		// Among dated tasks, earliest (most overdue) first.
+		if aDated && a.DueDate != b.DueDate {
+			return a.DueDate < b.DueDate
+		}
+		// Same due-date bucket: group by project.
+		if a.ProjectID != b.ProjectID {
+			return a.ProjectID < b.ProjectID
+		}
+		// Same project and bucket: preserve natural list order.
+		if a.Rank != b.Rank {
+			return a.Rank < b.Rank
+		}
+		return a.ID < b.ID
+	})
 }
 
 // ActivateTask marks a task as currently active and loads in TaskDetailPane

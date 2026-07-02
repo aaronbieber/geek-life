@@ -20,7 +20,9 @@ func NewTaskRepository(db *storm.DB) repository.TaskRepository {
 }
 
 func (t *taskRepository) GetAll() ([]model.Task, error) {
-	panic("implement me")
+	var tasks []model.Task
+	err := t.DB.AllByIndex("ProjectID", &tasks)
+	return tasks, err
 }
 
 func (t *taskRepository) GetAllByProject(project model.Project) ([]model.Task, error) {
