@@ -228,6 +228,13 @@ func (v *View) Bottomline() int {
 // Relocate moves the view window so that the cursor is in view
 // This is useful if the user has scrolled far away, and then starts typing
 func (v *View) Relocate() bool {
+	// Soft wrap needs scrolling measured in visual (wrapped) rows; the
+	// buffer-line math below cannot keep the cursor in view when a wrapped line
+	// spans more rows than the viewport.
+	if v.Buf.Settings["softwrap"].(bool) {
+		return v.relocateSoftwrap()
+	}
+
 	height := v.Bottomline() - v.Topline
 	ret := false
 	cy := v.Cursor.Y
@@ -259,6 +266,53 @@ func (v *View) Relocate() bool {
 		}
 	}
 	return ret
+}
+
+// relocateSoftwrap keeps the cursor within the viewport when soft wrapping is on.
+// It measures position in visual (wrapped) rows so a wrapped line taller than the
+// viewport cannot push the cursor out of view, and scrolls only as far as needed
+// so the viewport otherwise stays put (traditional text-box behavior).
+func (v *View) relocateSoftwrap() bool {
+	width := v.width - v.lineNumOffset
+	if width <= 0 || v.height <= 0 {
+		return false
+	}
+
+	cy := v.Cursor.Y
+	ret := false
+
+	if cy < v.Topline {
+		v.Topline = cy
+		ret = true
+	}
+
+	// Scroll down one buffer line at a time until the cursor's visual row fits.
+	for v.Topline < cy && v.cursorVisualRow(v.Topline) >= v.height {
+		v.Topline++
+		ret = true
+	}
+
+	return ret
+}
+
+// cursorVisualRow returns the cursor's visual row index when buffer line `top` is
+// the first visible line: the number of wrapped rows of the lines above the
+// cursor, plus the cursor's row within its own (possibly wrapped) line.
+func (v *View) cursorVisualRow(top int) int {
+	width := v.width - v.lineNumOffset
+	tabsize := int(v.Buf.Settings["tabsize"].(float64))
+
+	rows := 0
+	for ln := top; ln < v.Cursor.Y; ln++ {
+		line := []rune(v.Buf.Line(ln))
+		rows += len(wrapLineIndices(line, tabsize, width))
+	}
+
+	cyLine := []rune(v.Buf.Line(v.Cursor.Y))
+	cyRows := wrapLineIndices(cyLine, tabsize, width)
+	rows += wrapRowContaining(cyRows, v.Cursor.X, len(cyLine))
+
+	return rows
 }
 
 // Execute actions executes the supplied actions
