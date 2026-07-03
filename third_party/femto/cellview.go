@@ -64,7 +64,7 @@ type CellView struct {
 	lines [][]*Char
 }
 
-func (c *CellView) Draw(buf *Buffer, colorscheme Colorscheme, top, height, left, width int) {
+func (c *CellView) Draw(buf *Buffer, colorscheme Colorscheme, top, height, left, width, skipRows int) {
 	if width <= 0 {
 		return
 	}
@@ -130,8 +130,14 @@ func (c *CellView) Draw(buf *Buffer, colorscheme Colorscheme, top, height, left,
 		// never leads a continuation row. This reflows correctly when the
 		// terminal is resized because it runs on every draw.
 		if softwrap && width > 0 && StringWidth(lineStr, tabsize) > width {
+			// The top line may be scrolled partway in (sub-line scrolling): skip
+			// its first skipRows visual rows.
+			skip := 0
+			if lineN == top {
+				skip = skipRows
+			}
 			viewLine, curStyle = c.drawWrappedLine(
-				buf, colorscheme, line, lineN, viewLine, height, width, tabsize, matchingBrace, indentchar, curStyle,
+				buf, colorscheme, line, lineN, viewLine, height, width, tabsize, matchingBrace, indentchar, curStyle, skip,
 			)
 			lineN++
 			continue
@@ -445,17 +451,16 @@ func (v *View) moveCursorVisual(dir int) bool {
 // wrapping it on word boundaries. It appends one entry to c.lines per visual
 // row and returns the next viewLine along with the running style (carried
 // across logical lines for multi-line syntax highlighting).
+// The `skip` argument drops the first `skip` visual rows of this line (used for
+// sub-line scrolling of the top line); their style changes are still processed
+// so highlighting stays continuous.
 func (c *CellView) drawWrappedLine(
 	buf *Buffer, colorscheme Colorscheme, line []rune, lineN, viewLine, height, width, tabsize int,
-	matchingBrace Loc, indentchar rune, curStyle tcell.Style,
+	matchingBrace Loc, indentchar rune, curStyle tcell.Style, skip int,
 ) (int, tcell.Style) {
 	indentSetting := buf.Settings["indentchar"].(string)
 
-	for _, row := range wrapLineIndices(line, tabsize, width) {
-		if viewLine >= height {
-			return viewLine, curStyle
-		}
-
+	for i, row := range wrapLineIndices(line, tabsize, width) {
 		rowChars := make([]*Char, 0, len(row))
 		viewCol := 0
 		for _, colN := range row {
@@ -492,6 +497,13 @@ func (c *CellView) drawWrappedLine(
 				rowChars = append(rowChars, &Char{Loc{viewCol, viewLine}, Loc{colN, lineN}, char, char, st, 1})
 				viewCol++
 			}
+		}
+
+		if i < skip {
+			continue // scrolled above the viewport; not emitted
+		}
+		if viewLine >= height {
+			return viewLine, curStyle
 		}
 
 		c.lines = append(c.lines, rowChars)

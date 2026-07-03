@@ -20,6 +20,10 @@ type View struct {
 
 	// The topmost line, used for vertical scrolling
 	Topline int
+	// The visual (soft-wrapped) sub-row within Topline to start rendering from.
+	// Enables sub-line scrolling so a wrapped line taller than the viewport can
+	// still be scrolled through. Only meaningful when soft wrap is enabled.
+	topRow int
 	// The leftmost column, used for horizontal scrolling
 	leftCol int
 
@@ -152,6 +156,15 @@ func (v *View) paste(clip string) {
 
 // ScrollUp scrolls the view up n lines (if possible)
 func (v *View) ScrollUp(n int) {
+	// With soft wrap, scroll by visual (wrapped) rows so long paragraphs scroll
+	// smoothly one displayed row at a time.
+	if v.Buf.Settings["softwrap"].(bool) {
+		for i := 0; i < n; i++ {
+			v.scrollUpOneRow()
+		}
+		return
+	}
+
 	// Try to scroll by n but if it would overflow, scroll by 1
 	if v.Topline-n >= 0 {
 		v.Topline -= n
@@ -162,6 +175,13 @@ func (v *View) ScrollUp(n int) {
 
 // ScrollDown scrolls the view down n lines (if possible)
 func (v *View) ScrollDown(n int) {
+	if v.Buf.Settings["softwrap"].(bool) {
+		for i := 0; i < n; i++ {
+			v.scrollDownOneRow()
+		}
+		return
+	}
+
 	// Try to scroll by n but if it would overflow, scroll by 1
 	if v.Topline+n <= v.Buf.NumLines {
 		v.Topline += n
@@ -269,50 +289,110 @@ func (v *View) Relocate() bool {
 }
 
 // relocateSoftwrap keeps the cursor within the viewport when soft wrapping is on.
-// It measures position in visual (wrapped) rows so a wrapped line taller than the
-// viewport cannot push the cursor out of view, and scrolls only as far as needed
-// so the viewport otherwise stays put (traditional text-box behavior).
+// It measures position in visual (wrapped) rows and scrolls (including partway
+// into a wrapped line via topRow) only as far as needed to bring the cursor into
+// view, so the viewport otherwise stays put (traditional text-box behavior).
 func (v *View) relocateSoftwrap() bool {
-	width := v.width - v.lineNumOffset
-	if width <= 0 || v.height <= 0 {
+	if v.width-v.lineNumOffset <= 0 || v.height <= 0 {
 		return false
 	}
 
-	cy := v.Cursor.Y
+	v.clampTopRow()
 	ret := false
 
-	if cy < v.Topline {
-		v.Topline = cy
+	for v.cursorOffsetFromTop() < 0 {
+		if v.Topline == 0 && v.topRow == 0 {
+			break
+		}
+		v.scrollUpOneRow()
 		ret = true
 	}
-
-	// Scroll down one buffer line at a time until the cursor's visual row fits.
-	for v.Topline < cy && v.cursorVisualRow(v.Topline) >= v.height {
-		v.Topline++
+	for v.cursorOffsetFromTop() > v.height-1 {
+		prevTop, prevRow := v.Topline, v.topRow
+		v.scrollDownOneRow()
+		if v.Topline == prevTop && v.topRow == prevRow {
+			break // cannot scroll any further
+		}
 		ret = true
 	}
 
 	return ret
 }
 
-// cursorVisualRow returns the cursor's visual row index when buffer line `top` is
-// the first visible line: the number of wrapped rows of the lines above the
-// cursor, plus the cursor's row within its own (possibly wrapped) line.
-func (v *View) cursorVisualRow(top int) int {
+// lineVisualRows returns how many wrapped visual rows buffer line ln occupies at
+// the current view width.
+func (v *View) lineVisualRows(ln int) int {
 	width := v.width - v.lineNumOffset
-	tabsize := int(v.Buf.Settings["tabsize"].(float64))
-
-	rows := 0
-	for ln := top; ln < v.Cursor.Y; ln++ {
-		line := []rune(v.Buf.Line(ln))
-		rows += len(wrapLineIndices(line, tabsize, width))
+	if width <= 0 || ln < 0 || ln >= v.Buf.NumLines {
+		return 1
 	}
+	tabsize := int(v.Buf.Settings["tabsize"].(float64))
+	return len(wrapLineIndices([]rune(v.Buf.Line(ln)), tabsize, width))
+}
 
-	cyLine := []rune(v.Buf.Line(v.Cursor.Y))
-	cyRows := wrapLineIndices(cyLine, tabsize, width)
-	rows += wrapRowContaining(cyRows, v.Cursor.X, len(cyLine))
+// cursorSubRow returns the visual row within its own line that the cursor sits on.
+func (v *View) cursorSubRow() int {
+	width := v.width - v.lineNumOffset
+	if width <= 0 {
+		return 0
+	}
+	tabsize := int(v.Buf.Settings["tabsize"].(float64))
+	line := []rune(v.Buf.Line(v.Cursor.Y))
+	return wrapRowContaining(wrapLineIndices(line, tabsize, width), v.Cursor.X, len(line))
+}
 
-	return rows
+// cursorOffsetFromTop returns how many visual rows the cursor is below the top of
+// the viewport (negative if it is above it).
+func (v *View) cursorOffsetFromTop() int {
+	cy := v.Cursor.Y
+	rows := 0
+	if cy >= v.Topline {
+		for ln := v.Topline; ln < cy; ln++ {
+			rows += v.lineVisualRows(ln)
+		}
+	} else {
+		for ln := cy; ln < v.Topline; ln++ {
+			rows -= v.lineVisualRows(ln)
+		}
+	}
+	return rows + v.cursorSubRow() - v.topRow
+}
+
+// clampTopRow keeps Topline/topRow within valid ranges (e.g. after Topline was
+// set directly elsewhere).
+func (v *View) clampTopRow() {
+	if v.Topline < 0 {
+		v.Topline = 0
+	}
+	if v.Topline > v.Buf.NumLines-1 {
+		v.Topline = v.Buf.NumLines - 1
+	}
+	if v.topRow < 0 {
+		v.topRow = 0
+	}
+	if max := v.lineVisualRows(v.Topline) - 1; v.topRow > max {
+		v.topRow = max
+	}
+}
+
+// scrollDownOneRow scrolls the viewport down by one visual row.
+func (v *View) scrollDownOneRow() {
+	if v.topRow < v.lineVisualRows(v.Topline)-1 {
+		v.topRow++
+	} else if v.Topline < v.Buf.NumLines-1 {
+		v.Topline++
+		v.topRow = 0
+	}
+}
+
+// scrollUpOneRow scrolls the viewport up by one visual row.
+func (v *View) scrollUpOneRow() {
+	if v.topRow > 0 {
+		v.topRow--
+	} else if v.Topline > 0 {
+		v.Topline--
+		v.topRow = v.lineVisualRows(v.Topline) - 1
+	}
 }
 
 // Execute actions executes the supplied actions
@@ -456,7 +536,12 @@ func (v *View) displayView(screen tcell.Screen) {
 	left := v.leftCol
 	top := v.Topline
 
-	v.cellview.Draw(v.Buf, v.colorscheme, top, height, left, width-v.lineNumOffset)
+	skipRows := 0
+	if v.Buf.Settings["softwrap"].(bool) {
+		v.clampTopRow()
+		skipRows = v.topRow
+	}
+	v.cellview.Draw(v.Buf, v.colorscheme, top, height, left, width-v.lineNumOffset, skipRows)
 
 	screenX := v.x
 	realLineN := top - 1
@@ -507,7 +592,11 @@ func (v *View) displayView(screen tcell.Screen) {
 				screen.SetContent(screenX, yOffset+visualLineN, ' ', nil, lineNumStyle)
 				screenX++
 			}
-			if softwrapped && visualLineN != 0 {
+			// The very first visible row is a wrapped continuation when the top
+			// line is scrolled partway in (topRow > 0), so pad instead of
+			// printing its number.
+			continuation := (softwrapped && visualLineN != 0) || (visualLineN == 0 && v.topRow > 0)
+			if continuation {
 				// Pad without the line number because it was written on the visual line before
 				for range lineNum {
 					screen.SetContent(screenX, yOffset+visualLineN, ' ', nil, lineNumStyle)
@@ -663,7 +752,16 @@ func (v *View) Draw(screen tcell.Screen) {
 	v.displayView(screen)
 
 	// Don't draw the cursor if it is out of the viewport or if it has a selection
-	if v.Cursor.Y-v.Topline < 0 || v.Cursor.Y-v.Topline > v.height-1 || v.Cursor.HasSelection() {
+	hideCursor := v.Cursor.HasSelection()
+	if v.Buf.Settings["softwrap"].(bool) {
+		off := v.cursorOffsetFromTop()
+		if off < 0 || off > v.height-1 {
+			hideCursor = true
+		}
+	} else if v.Cursor.Y-v.Topline < 0 || v.Cursor.Y-v.Topline > v.height-1 {
+		hideCursor = true
+	}
+	if hideCursor {
 		screen.HideCursor()
 	}
 

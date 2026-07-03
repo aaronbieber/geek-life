@@ -45,6 +45,7 @@ func (v *View) Center() bool {
 	if v.Topline < 0 {
 		v.Topline = 0
 	}
+	v.topRow = 0
 	return true
 }
 
