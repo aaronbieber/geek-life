@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sort"
 	"time"
 	"unicode"
@@ -203,6 +202,9 @@ func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 	case 'K':
 		pane.MoveTask(-1)
 		return nil
+	case 'D':
+		pane.startDeleteSelectedTask()
+		return nil
 	}
 
 	switch unicode.ToLower(event.Rune()) {
@@ -379,17 +381,42 @@ func (pane *TaskPane) ActivateTask(idx int) {
 	thirdCol = taskDetailPane
 }
 
-// ClearCompletedTasks removes tasks from current list that are in completed state
-func (pane *TaskPane) ClearCompletedTasks() {
-	count := 0
-	for i, task := range pane.tasks {
-		if task.Completed && pane.taskRepo.Delete(&pane.tasks[i]) == nil {
-			pane.list.RemoveItem(i)
-			count++
-		}
+// startDeleteSelectedTask shows a status-bar confirmation for deleting the task
+// under the cursor.
+func (pane *TaskPane) startDeleteSelectedTask() {
+	idx := pane.list.GetCurrentItem()
+	if idx < 0 || idx >= len(pane.tasks) {
+		return
 	}
 
-	statusBar.showForSeconds(fmt.Sprintf("[yellow]%d tasks cleared!", count), 5)
+	startDeleteConfirm(pane.tasks[idx].Title,
+		pane.deleteSelectedTask,
+		func() { app.SetFocus(taskPane) })
+}
+
+// deleteSelectedTask removes the task under the cursor and reloads the list,
+// keeping the selection near the deleted position.
+func (pane *TaskPane) deleteSelectedTask() {
+	idx := pane.list.GetCurrentItem()
+	if idx < 0 || idx >= len(pane.tasks) {
+		return
+	}
+
+	if err := pane.taskRepo.Delete(&pane.tasks[idx]); err != nil {
+		statusBar.showForSeconds("[red::]Could not delete task: "+err.Error(), 5)
+		return
+	}
+
+	if pane.reloadList != nil {
+		pane.reloadList()
+	}
+	if n := len(pane.tasks); n > 0 {
+		if idx >= n {
+			idx = n - 1
+		}
+		pane.list.SetCurrentItem(idx)
+	}
+	app.SetFocus(taskPane)
 }
 
 // ReloadCurrentTask Loads the current task - in Task details and listing

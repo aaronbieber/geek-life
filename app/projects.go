@@ -178,18 +178,29 @@ func (pane *ProjectPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey 
 	return event
 }
 
-// deleteConfirmActive is true while the "are you sure?" prompt for deleting a
-// project is showing on the status bar. deleteConfirmName is the project name
-// used in that prompt.
+// Delete confirmation chord: while active, a red "are you sure?" prompt with the
+// name of the item being deleted is shown on the status bar, and the next key
+// resolves it. Shared by project and task deletion.
 var (
 	deleteConfirmActive bool
-	deleteConfirmName   string
+	deleteConfirmName   string // the item being deleted, for the prompt
+	deleteConfirmDo     func() // performs the deletion on "y"
+	deleteConfirmCancel func() // restores focus on "n"/Esc
 )
 
 // deleteConfirmOptions are the choices shown in the delete confirmation prompt.
 var deleteConfirmOptions = []keyHint{
 	{"y", "Yes"},
 	{"n", "No"},
+}
+
+// startDeleteConfirm begins a delete confirmation for the named item. do is run
+// if the user confirms; cancel restores focus otherwise.
+func startDeleteConfirm(name string, do, cancel func()) {
+	deleteConfirmName = name
+	deleteConfirmDo = do
+	deleteConfirmCancel = cancel
+	deleteConfirmActive = true
 }
 
 // projectSelected reports whether the highlighted list item is a project (as
@@ -213,19 +224,24 @@ func (pane *ProjectPane) startDeleteSelected() {
 	}
 	app.SetFocus(projectPane) // keep the projects pane focused during the prompt
 
-	deleteConfirmName = pane.projects[idx].Title
-	deleteConfirmActive = true
+	startDeleteConfirm(pane.projects[idx].Title,
+		projectPane.RemoveActivateProject,
+		func() { app.SetFocus(projectPane) })
 }
 
-// handleDeleteConfirm resolves the delete confirmation prompt. "y" deletes the
-// active project; any other key (including "n" and Esc) cancels.
+// handleDeleteConfirm resolves the delete confirmation prompt. "y" performs the
+// deletion; any other key (including "n" and Esc) cancels.
 func handleDeleteConfirm(event *tcell.EventKey) *tcell.EventKey {
 	deleteConfirmActive = false
+	do, cancel := deleteConfirmDo, deleteConfirmCancel
+	deleteConfirmDo, deleteConfirmCancel = nil, nil
 
 	if unicode.ToLower(event.Rune()) == 'y' {
-		projectPane.RemoveActivateProject()
-	} else {
-		app.SetFocus(projectPane)
+		if do != nil {
+			do()
+		}
+	} else if cancel != nil {
+		cancel()
 	}
 
 	return nil
@@ -236,9 +252,6 @@ func (pane *ProjectPane) activateProject(idx int) {
 	taskPane.LoadProjectTasks(*pane.activeProject)
 
 	removeThirdCol()
-	projectDetailPane.SetProject(pane.activeProject)
-	contents.AddItem(projectDetailPane, 25, 0, false)
-	thirdCol = projectDetailPane
 	app.SetFocus(taskPane)
 }
 

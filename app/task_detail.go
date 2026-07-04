@@ -338,8 +338,6 @@ func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey
 		removeThirdCol()
 		taskPane.RefreshAfterEdit() // reflect date/color changes; re-sort dynamic lists
 		app.SetFocus(taskPane)
-		contents.AddItem(projectDetailPane, 25, 0, false)
-		thirdCol = projectDetailPane
 		return nil
 	case tcell.KeyDown:
 		if event.Modifiers()&tcell.ModShift != 0 {

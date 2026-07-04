@@ -50,13 +50,9 @@ func hideHelp() {
 	contents.RemoveItem(helpPane)
 	contents.AddItem(taskPane, 0, 2, false)
 
-	switch helpSavedThird {
-	case taskDetailPane:
+	if helpSavedThird == taskDetailPane {
 		contents.AddItem(taskDetailPane, 0, 3, false)
 		thirdCol = taskDetailPane
-	case projectDetailPane:
-		contents.AddItem(projectDetailPane, 25, 0, false)
-		thirdCol = projectDetailPane
 	}
 
 	if helpReturnFocus != nil {
@@ -70,15 +66,23 @@ const helpText = `[yellow::b]Geek-life — Help[-::-]
 
 Scroll this page with ↑/↓, j/k, PgUp/PgDn, or g/G.  Press [yellow]←[-] or [yellow]Esc[-] to close help.
 
-A keyboard-driven task manager. This page explains the layout, how to get
-around, and every shortcut. Read top to bottom if you're new.
+A keyboard-driven task manager. This page explains the philosophy, the
+layout, and every shortcut. Read top to bottom if you're new.
+
+[yellow::b]How geek-life works[-::-]
+Geek-life is a lightweight task manager for tracking simple, related lists
+of tasks — not a heavyweight planner.
+  • A [::b]project[::-] is a container for a set of related tasks.
+  • A task is either done or not done; toggle it as you work.
+  • A task list can be filtered to show only done or only not-done tasks.
+  • When every task in a project is done, you're finished with it — delete
+    the whole project rather than clearing tasks one by one.
 
 [yellow::b]The layout[-::-]
 The screen has up to three columns, left to right:
-  • [::b]Projects[::-] (left) — your lists and projects.
+  • [::b]Projects[::-] (left) — your dynamic lists and projects.
   • [::b]Tasks[::-] (middle) — the tasks in the selected list.
-  • [::b]Task Detail[::-] / [::b]Actions[::-] (right) — the selected task's note, due
-    date and actions, or a project's actions.
+  • [::b]Task Detail[::-] (right) — the selected task's note, due date and priority.
 One column is focused at a time; the focused column has a brighter border.
 
 [yellow::b]Finding the shortcuts[-::-]
@@ -117,8 +121,8 @@ With a list loaded in the Tasks column:
   • New task (in a project):     [yellow]n[-]
   • Open a task:                 [yellow]→[-] / [yellow]Enter[-]
   • Toggle done / not done:      [yellow]d[-]
+  • Delete a task:               [yellow]Shift+D[-], then confirm [yellow]y[-] / [yellow]n[-]
   • Move the selected task up/down (projects only): [yellow]Shift+K[-] / [yellow]Shift+J[-]
-  • Clear all completed tasks (in a project): [yellow]c[-], then confirm
 Completed tasks are shown in green; tasks due today are orange and overdue
 tasks are red.
 

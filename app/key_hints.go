@@ -39,7 +39,7 @@ func formatKeyHints(hints []keyHint) string {
 // chord sub-menu when it is active, otherwise the focused context's hints.
 func keyHintText() string {
 	if deleteConfirmActive {
-		return " Deleting " + deleteConfirmName + ", are you sure? " + renderHints(deleteConfirmOptions)
+		return " [red]Deleting \"" + deleteConfirmName + "\", are you sure?[-] " + renderHints(deleteConfirmOptions)
 	}
 	if filterChordActive {
 		return " [::b]Filter:[::-] " + renderHints(filterOptions)

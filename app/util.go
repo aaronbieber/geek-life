@@ -74,13 +74,12 @@ func ignoreKeyEvt() bool {
 // }
 
 // thirdCol tracks which pane (if any) currently occupies the right-hand column of
-// the contents Flex: taskDetailPane, projectDetailPane, or nil. It lets Help
-// restore the previous layout when it closes.
+// the contents Flex: taskDetailPane or nil. It lets Help restore the previous
+// layout when it closes.
 var thirdCol tview.Primitive
 
 func removeThirdCol() {
 	contents.RemoveItem(taskDetailPane)
-	contents.RemoveItem(projectDetailPane)
 	thirdCol = nil
 }
 

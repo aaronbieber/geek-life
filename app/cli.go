@@ -20,12 +20,11 @@ var (
 	app              *tview.Application
 	layout, contents *tview.Flex
 
-	statusBar         *StatusBar
-	projectPane       *ProjectPane
-	taskPane          *TaskPane
-	taskDetailPane    *TaskDetailPane
-	projectDetailPane *ProjectDetailPane
-	helpPane          *tview.TextView
+	statusBar      *StatusBar
+	projectPane    *ProjectPane
+	taskPane       *TaskPane
+	taskDetailPane *TaskDetailPane
+	helpPane       *tview.TextView
 
 	db          *storm.DB
 	projectRepo repository.ProjectRepository
@@ -135,9 +134,6 @@ func setKeyboardShortcuts() *tview.Application {
 			event = projectPane.handleShortcuts(event)
 		case taskPane.HasFocus():
 			event = taskPane.handleShortcuts(event)
-			if event != nil && projectDetailPane.isShowing() {
-				event = projectDetailPane.handleShortcuts(event)
-			}
 		case taskDetailPane.HasFocus():
 			event = taskDetailPane.handleShortcuts(event)
 		}
@@ -149,7 +145,6 @@ func setKeyboardShortcuts() *tview.Application {
 func prepareContentPages() *tview.Flex {
 	projectPane = NewProjectPane(projectRepo)
 	taskPane = NewTaskPane(projectRepo, taskRepo)
-	projectDetailPane = NewProjectDetailPane()
 	taskDetailPane = NewTaskDetailPane(taskRepo)
 	helpPane = NewHelpPane()
 
@@ -168,24 +163,4 @@ func makeTitleBar() *tview.Flex {
 	return tview.NewFlex().
 		AddItem(titleText, 0, 2, false).
 		AddItem(versionInfo, 0, 1, false)
-}
-
-func AskYesNo(text string, f func()) {
-
-	activePane := app.GetFocus()
-	modal := tview.NewModal().
-		SetText(text).
-		AddButtons([]string{"Yes", "No"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			if buttonLabel == "Yes" {
-				f()
-			}
-			app.SetRoot(layout, true).EnableMouse(true)
-			app.SetFocus(activePane)
-		})
-
-	pages := tview.NewPages().
-		AddPage("background", layout, true, true).
-		AddPage("modal", modal, true, true)
-	_ = app.SetRoot(pages, true).EnableMouse(true)
 }
