@@ -87,7 +87,8 @@ func getTaskTitleColor(task model.Task) string {
 	colorName := "smokewhite"
 
 	if task.Completed {
-		colorName = "green"
+		// Grey de-emphasizes done tasks and keeps green free for the [A] cookie.
+		colorName = "grey"
 	} else if task.DueDate != 0 {
 		dayDiff := int(time.Until(time.Unix(task.DueDate, 0)).Hours() / 24)
 		if dayDiff == 0 {
