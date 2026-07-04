@@ -114,7 +114,16 @@ func makeTaskListingTitle(task model.Task) string {
 		}
 	}
 
-	return fmt.Sprintf("[%s]%s %s%s", getTaskTitleColor(task), checkbox, prefix, task.Title)
+	color := getTaskTitleColor(task)
+	title := fmt.Sprintf("[%s]%s ", color, checkbox)
+	// The priority cookie carries its own color ([A] green, [C] orange); B has
+	// none. Restore the base color afterwards for the title text.
+	if cookie := priorityCookie(task); cookie != "" {
+		title += cookie + " "
+	}
+	title += fmt.Sprintf("[%s]%s%s", color, prefix, task.Title)
+
+	return title
 }
 
 // `findProjectByID` is unused (deadcode)

@@ -180,6 +180,18 @@ func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyRight:
 		// Mimic Enter: open the highlighted task.
 		return tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
+	case tcell.KeyUp:
+		// Shift+Up raises priority (org-mode S-up); plain Up navigates the list.
+		if event.Modifiers()&tcell.ModShift != 0 {
+			pane.changeSelectedTaskPriority(-1)
+			return nil
+		}
+	case tcell.KeyDown:
+		// Shift+Down lowers priority (org-mode S-down); plain Down navigates.
+		if event.Modifiers()&tcell.ModShift != 0 {
+			pane.changeSelectedTaskPriority(1)
+			return nil
+		}
 	}
 
 	// Shift+J / Shift+K reorder the selected task. Check the raw rune before
@@ -227,6 +239,7 @@ func (pane *TaskPane) LoadProjectTasks(project model.Project) {
 		return
 	}
 
+	sortTasks(tasks)
 	pane.SetList(tasks)
 
 	if len(pane.tasks) == 0 {
@@ -295,11 +308,7 @@ func (pane *TaskPane) LoadDynamicList(logic string) {
 		return
 	}
 
-	if logic == "all" {
-		sortAllTasks(tasks)
-	} else {
-		sort.Slice(tasks, func(i, j int) bool { return tasks[i].ProjectID < tasks[j].ProjectID })
-	}
+	sortTasks(tasks)
 
 	pane.SetList(tasks)
 	app.SetFocus(taskPane)
@@ -328,29 +337,31 @@ func (pane *TaskPane) ShowSplash() {
 	pane.AddItem(pane.hint, 0, 1, false)
 }
 
-// sortAllTasks orders tasks for the "All" dynamic list: forward chronological by
-// due date (most overdue first, then longest-until-due), with undated tasks last.
-// Tasks sharing a due-date bucket are grouped by project, and within a project
-// they keep their natural list order (Rank, then ID) so that tasks adjacent in a
-// project stay adjacent here when they share — or both lack — a due date.
-func sortAllTasks(tasks []model.Task) {
+// sortTasks orders any task list: by priority first (A→B→C, unset counting as
+// B), then by due date (most overdue first, undated last), then grouped by
+// project, and finally by each task's rank (its user-defined order) then ID.
+// Rank is the lowest-precedence key, so it can never override priority or dates.
+func sortTasks(tasks []model.Task) {
 	sort.SliceStable(tasks, func(i, j int) bool {
 		a, b := tasks[i], tasks[j]
 
-		// Dated tasks come before undated ones.
+		// 1. Priority (A highest).
+		if pa, pb := effectivePriority(a), effectivePriority(b); pa != pb {
+			return pa < pb
+		}
+		// 2. Due date: dated before undated, earliest first.
 		aDated, bDated := a.DueDate != 0, b.DueDate != 0
 		if aDated != bDated {
 			return aDated
 		}
-		// Among dated tasks, earliest (most overdue) first.
 		if aDated && a.DueDate != b.DueDate {
 			return a.DueDate < b.DueDate
 		}
-		// Same due-date bucket: group by project.
+		// 3. Group by project.
 		if a.ProjectID != b.ProjectID {
 			return a.ProjectID < b.ProjectID
 		}
-		// Same project and bucket: preserve natural list order.
+		// 4. Natural per-project order (rank), then ID.
 		if a.Rank != b.Rank {
 			return a.Rank < b.Rank
 		}
@@ -387,27 +398,11 @@ func (pane *TaskPane) ReloadCurrentTask() {
 	taskDetailPane.SetTask(pane.activeTask)
 }
 
-// RefreshList re-renders each visible task title so changes made in the detail
-// pane (e.g. due-date color) take effect, without altering the current selection.
-func (pane *TaskPane) RefreshList() {
-	selected := pane.list.GetCurrentItem()
-	for i := range pane.tasks {
-		pane.list.SetItemText(i, makeTaskListingTitle(pane.tasks[i]), "")
-	}
-	pane.list.SetCurrentItem(selected)
-}
-
-// RefreshAfterEdit updates the task list after returning from the detail pane.
-// For a project the order is user-defined, so titles are just re-rendered in
-// place. For a dynamic list the ordering (and membership) depends on due dates,
-// so the list is reloaded to re-sort it; the selection then follows the edited
-// task to its new position by ID.
+// RefreshAfterEdit reloads the task list after returning from the detail pane so
+// that changes made there (priority, due date, done state, colors) are reflected
+// and the list is re-sorted. The selection follows the edited task to its new
+// position by ID, whether the list is a project or a dynamic list.
 func (pane *TaskPane) RefreshAfterEdit() {
-	if projectPane.GetActiveProject() != nil {
-		pane.RefreshList()
-		return
-	}
-
 	editedID := int64(-1)
 	if pane.activeTask != nil {
 		editedID = pane.activeTask.ID
@@ -443,6 +438,27 @@ func (pane *TaskPane) toggleSelectedTaskDone() {
 		pane.reloadList()
 	}
 
+	pane.selectTaskByID(editedID, idx)
+}
+
+// changeSelectedTaskPriority adjusts the priority of the task under the cursor.
+// delta of -1 raises it (toward A), +1 lowers it (toward C); it is clamped to
+// the A..C range. The list is reloaded so it re-sorts by the new priority, and
+// the selection follows the task to its new position.
+func (pane *TaskPane) changeSelectedTaskPriority(delta int) {
+	idx := pane.list.GetCurrentItem()
+	if idx < 0 || idx >= len(pane.tasks) {
+		return
+	}
+
+	if !setTaskPriority(pane.taskRepo, &pane.tasks[idx], delta) {
+		return
+	}
+	editedID := pane.tasks[idx].ID
+
+	if pane.reloadList != nil {
+		pane.reloadList()
+	}
 	pane.selectTaskByID(editedID, idx)
 }
 

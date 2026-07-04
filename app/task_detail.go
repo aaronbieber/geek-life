@@ -170,6 +170,20 @@ func (td *TaskDetailPane) toggleTaskStatus() {
 	}
 }
 
+// changeTaskPriority raises (delta -1) or lowers (delta +1) the shown task's
+// priority. The header and the visible list item update immediately; the list
+// re-sorts when the detail closes (RefreshAfterEdit).
+func (td *TaskDetailPane) changeTaskPriority(delta int) {
+	if td.task == nil {
+		return
+	}
+	if !setTaskPriority(td.taskRepo, td.task, delta) {
+		return
+	}
+	td.header.SetTask(td.task)
+	taskPane.list.SetItemText(taskPane.list.GetCurrentItem(), makeTaskListingTitle(*td.task), "")
+}
+
 // Display Task date in detail pane, and update date if asked to
 func (td *TaskDetailPane) setTaskDate(unixDate int64, update bool) {
 	if update {
@@ -328,9 +342,17 @@ func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey
 		thirdCol = projectDetailPane
 		return nil
 	case tcell.KeyDown:
+		if event.Modifiers()&tcell.ModShift != 0 {
+			td.changeTaskPriority(1)
+			return nil
+		}
 		td.taskDetailView.ScrollDown(1)
 		return nil
 	case tcell.KeyUp:
+		if event.Modifiers()&tcell.ModShift != 0 {
+			td.changeTaskPriority(-1)
+			return nil
+		}
 		td.taskDetailView.ScrollUp(1)
 		return nil
 	case tcell.KeyRune:

@@ -122,6 +122,15 @@ With a list loaded in the Tasks column:
 Completed tasks are shown in green; tasks due today are orange and overdue
 tasks are red.
 
+[yellow::b]Priorities[-::-]
+Tasks can be [green][A[][-] (high) or [orange][C[][-] (low). The default is B, which is
+implicit and shown without a cookie — so most tasks have no bracket. Raise a
+task to A or lower it to C:
+  • Raise priority (toward A):  [yellow]Shift+↑[-]
+  • Lower priority (toward C):  [yellow]Shift+↓[-]
+These work in both the Tasks list and the task detail. Lists are sorted by
+priority first, then due date, then your manual order.
+
 [yellow::b]Filtering[-::-]
 Press [yellow]f[-] to start a filter, then choose:
   [yellow]d[-] Done      [yellow]u[-] Not done      [yellow]a[-] All (no filter)

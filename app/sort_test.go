@@ -19,7 +19,7 @@ func TestSortAllTasks(t *testing.T) {
 		{ID: 6, ProjectID: 2, DueDate: day1, Rank: 1}, // F (after C in project 2)
 	}
 
-	sortAllTasks(tasks)
+	sortTasks(tasks)
 
 	got := make([]int64, len(tasks))
 	for i := range tasks {
@@ -51,8 +51,28 @@ func TestSortAllTasksUndatedLast(t *testing.T) {
 		{ID: 1, ProjectID: 1, DueDate: 0},
 		{ID: 2, ProjectID: 1, DueDate: 9999999999},
 	}
-	sortAllTasks(tasks)
+	sortTasks(tasks)
 	if tasks[0].ID != 2 || tasks[1].ID != 1 {
 		t.Fatalf("undated task not sorted last: got ids %d,%d", tasks[0].ID, tasks[1].ID)
+	}
+}
+
+func TestSortTasksPriorityBeatsDateAndRank(t *testing.T) {
+	// Priority outranks both due date and rank: a high-priority (A) task with no
+	// date and a high rank must still sort before a default task due today with
+	// rank 0. Priority 0 (unset) is treated as B.
+	tasks := []model.Task{
+		{ID: 1, ProjectID: 1, DueDate: 100, Rank: 0, Priority: 0}, // B, dated
+		{ID: 2, ProjectID: 1, DueDate: 0, Rank: 9, Priority: 1},   // A, undated, high rank
+		{ID: 3, ProjectID: 1, DueDate: 50, Rank: 0, Priority: 3},  // C, most overdue
+	}
+	sortTasks(tasks)
+
+	got := []int64{tasks[0].ID, tasks[1].ID, tasks[2].ID}
+	want := []int64{2, 1, 3} // A first, then B (dated), then C last
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("priority sort: got %v want %v", got, want)
+		}
 	}
 }

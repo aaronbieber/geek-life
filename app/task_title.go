@@ -78,8 +78,13 @@ func (header *TaskDetailHeader) bindRenameEvent() *tview.InputField {
 // SetTask set a task to the header
 func (header *TaskDetailHeader) SetTask(task *model.Task) {
 	header.task = task
-	header.taskName.SetText(task.Title)
-	header.taskName.SetText(fmt.Sprintf("[%s::b]# %s", getTaskTitleColor(*task), task.Title))
+	color := getTaskTitleColor(*task)
+	title := fmt.Sprintf("[%s::b]# ", color)
+	if cookie := priorityCookie(*task); cookie != "" {
+		title += cookie + " "
+	}
+	title += fmt.Sprintf("[%s::b]%s", color, task.Title)
+	header.taskName.SetText(title)
 }
 
 // ShowRename activate edit option of task title
