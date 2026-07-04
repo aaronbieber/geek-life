@@ -78,12 +78,15 @@ func (pane *ProjectPane) addNewProject() {
 	if err != nil {
 		statusBar.showForSeconds("[red::]Failed to create Project:"+err.Error(), 5)
 	} else {
-		statusBar.showForSeconds(fmt.Sprintf("[yellow::]Project %s created. Press n to start adding new tasks.", name), 10)
+		statusBar.showForSeconds(fmt.Sprintf("[yellow::]Project %s created. Add a task, or press Esc.", name), 10)
 		pane.projects = append(pane.projects, project)
 		pane.newProject.SetText("")
 		// Hide the input; activating the new project moves focus to the task pane.
 		pane.RemoveItem(pane.newProject)
 		pane.addProjectToList(len(pane.projects)-1, true)
+		// Open the task entry so tasks can be added immediately, mirroring how
+		// creating a project drops straight into its (now empty) task list.
+		taskPane.showNewTaskInput()
 	}
 }
 

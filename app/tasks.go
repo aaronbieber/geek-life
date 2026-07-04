@@ -67,6 +67,7 @@ func NewTaskPane(projectRepo repository.ProjectRepository, taskRepo repository.T
 
 			pane.tasks = append(pane.tasks, task)
 			pane.addTaskToList(len(pane.tasks) - 1)
+			pane.RemoveItem(pane.hint) // clear the "No tasks" message now that one exists
 			pane.newTask.SetText("")
 			statusBar.showForSeconds("[yellow::]Task created. Add another task or press Esc.", 5)
 		case tcell.KeyEsc:
