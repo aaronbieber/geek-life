@@ -192,6 +192,13 @@ var deleteConfirmOptions = []keyHint{
 	{"n", "No"},
 }
 
+// projectSelected reports whether the highlighted list item is a project (as
+// opposed to a dynamic list or a section header).
+func (pane *ProjectPane) projectSelected() bool {
+	idx := pane.list.GetCurrentItem() - pane.projectListStarting
+	return idx >= 0 && idx < len(pane.projects)
+}
+
 // startDeleteSelected begins deleting the project under the cursor. The project
 // is opened first (so its tasks are visible), then a confirmation prompt is
 // shown on the status bar. Does nothing when the selection is not a project.

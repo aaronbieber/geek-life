@@ -97,12 +97,17 @@ func contextKeyHints() []keyHint {
 // The p/t pane-switch keys are advertised by the underlined letters in the pane
 // titles, so they are not repeated here.
 func (pane *ProjectPane) keyHints() []keyHint {
-	return []keyHint{
+	hints := []keyHint{
 		{"j,k", "Up/down"},
 		{"enter", "Open"},
 		{"n", "New project"},
-		{"d", "Delete project"},
 	}
+	// "d" only acts on a project row, so only hint it there.
+	if pane.projectSelected() {
+		hints = append(hints, keyHint{"d", "Delete project"})
+	}
+
+	return hints
 }
 
 // keyHints returns the context hints when the Tasks pane list is focused. "New
