@@ -130,8 +130,8 @@ tasks are red.
 Tasks can be [green][A[][-] (high) or [orange][C[][-] (low). The default is B, which is
 implicit and shown without a cookie — so most tasks have no bracket. Raise a
 task to A or lower it to C:
-  • Raise priority (toward A):  [yellow]Shift+↑[-]
-  • Lower priority (toward C):  [yellow]Shift+↓[-]
+  • Raise priority (toward A):  [yellow]=[-] or [yellow]+[-]
+  • Lower priority (toward C):  [yellow]-[-]
 These work in both the Tasks list and the task detail. Lists are sorted by
 priority first, then due date, then your manual order.
 
@@ -154,7 +154,7 @@ Open a task to view and change it:
 [yellow::b]Due dates[-::-] (in the task detail)
   • Edit the date field: [yellow]d[-], type a date as YYYY-MM-DD, then [yellow]Enter[-]
   • Set to today:        [yellow]o[-]
-  • Next / previous day: [yellow]+[-] / [yellow]-[-]
+  • Next / previous day: [yellow]][-] / [yellow][[-]
   • Clear the due date:  [yellow]u[-]
 
 [yellow::b]Editing a note[-::-]

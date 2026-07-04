@@ -46,7 +46,7 @@ func TestTaskPaneKeyHintsInProject(t *testing.T) {
 	pane := &TaskPane{}
 	// With a project active: reorder and "new task" are available.
 	eqStrs(t, hintKeys(pane.keyHints()),
-		[]string{"j,k", "J/K", "enter", "d", "n", "f", "esc"})
+		[]string{"j,k", "J/K", "enter", "d", "=,-", "n", "f", "esc"})
 }
 
 func TestTaskPaneKeyHintsDynamicList(t *testing.T) {
@@ -57,5 +57,5 @@ func TestTaskPaneKeyHintsDynamicList(t *testing.T) {
 	pane := &TaskPane{}
 	// No project: no reorder, no "new task".
 	eqStrs(t, hintKeys(pane.keyHints()),
-		[]string{"j,k", "enter", "d", "f", "esc"})
+		[]string{"j,k", "enter", "d", "=,-", "f", "esc"})
 }

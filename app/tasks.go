@@ -195,23 +195,17 @@ func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyRight:
 		// Mimic Enter: open the highlighted task.
 		return tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
-	case tcell.KeyUp:
-		// Shift+Up raises priority (org-mode S-up); plain Up navigates the list.
-		if event.Modifiers()&tcell.ModShift != 0 {
-			pane.changeSelectedTaskPriority(-1)
-			return nil
-		}
-	case tcell.KeyDown:
-		// Shift+Down lowers priority (org-mode S-down); plain Down navigates.
-		if event.Modifiers()&tcell.ModShift != 0 {
-			pane.changeSelectedTaskPriority(1)
-			return nil
-		}
 	}
 
-	// Shift+J / Shift+K reorder the selected task. Check the raw rune before
-	// the case-insensitive switch below, which would otherwise treat them as j/k.
+	// Shift+J / Shift+K reorder the selected task; = / + raise and - lowers the
+	// priority. Checked as raw runes before the case-insensitive switch below.
 	switch event.Rune() {
+	case '=', '+':
+		pane.changeSelectedTaskPriority(-1)
+		return nil
+	case '-':
+		pane.changeSelectedTaskPriority(1)
+		return nil
 	case 'J':
 		pane.MoveTask(1)
 		return nil

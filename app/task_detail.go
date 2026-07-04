@@ -145,13 +145,13 @@ func (td *TaskDetailPane) makeDateRow() *tview.Flex {
 		AddItem(td.taskDateDisplay, 0, 2, true).
 		AddItem(td.taskDate, 14, 0, true).
 		AddItem(blankCell, 1, 0, false).
-		AddItem(makeButton("t[::u]o[::-]day", td.todaySelector), 8, 1, false).
+		AddItem(makeButton("today", td.todaySelector), 8, 1, false).
 		AddItem(blankCell, 1, 0, false).
-		AddItem(makeButton("[::u]+[::-]1", td.nextDaySelector), 4, 1, false).
+		AddItem(makeButton("+1", td.nextDaySelector), 4, 1, false).
 		AddItem(blankCell, 1, 0, false).
-		AddItem(makeButton("[::u]-[::-]1", td.prevDaySelector), 4, 1, false).
+		AddItem(makeButton("-1", td.prevDaySelector), 4, 1, false).
 		AddItem(blankCell, 1, 0, false).
-		AddItem(makeButton("[::u]u[::-]nset", td.unsetDateSelector), 8, 1, false)
+		AddItem(makeButton("unset", td.unsetDateSelector), 8, 1, false)
 }
 
 func (td *TaskDetailPane) updateToggleDisplay() {
@@ -340,17 +340,9 @@ func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey
 		app.SetFocus(taskPane)
 		return nil
 	case tcell.KeyDown:
-		if event.Modifiers()&tcell.ModShift != 0 {
-			td.changeTaskPriority(1)
-			return nil
-		}
 		td.taskDetailView.ScrollDown(1)
 		return nil
 	case tcell.KeyUp:
-		if event.Modifiers()&tcell.ModShift != 0 {
-			td.changeTaskPriority(-1)
-			return nil
-		}
 		td.taskDetailView.ScrollUp(1)
 		return nil
 	case tcell.KeyRune:
@@ -379,11 +371,17 @@ func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey
 		case 'u':
 			td.unsetDateSelector()
 			return nil
-		case '+':
+		case ']':
 			td.nextDaySelector()
 			return nil
-		case '-':
+		case '[':
 			td.prevDaySelector()
+			return nil
+		case '=', '+':
+			td.changeTaskPriority(-1)
+			return nil
+		case '-':
+			td.changeTaskPriority(1)
 			return nil
 		}
 	}

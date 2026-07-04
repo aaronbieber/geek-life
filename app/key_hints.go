@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/rivo/tview"
 )
 
 // keyHint is a single "<key>: <operation>" entry shown in the status bar.
@@ -24,7 +26,8 @@ var quitHint = keyHint{"ctrl+c", "Quit"}
 func renderHints(hints []keyHint) string {
 	parts := make([]string, 0, len(hints))
 	for _, h := range hints {
-		parts = append(parts, fmt.Sprintf("[yellow]%s[-]: %s", h.key, h.op))
+		// Escape the key so bracket keys like "[,]" aren't parsed as color tags.
+		parts = append(parts, fmt.Sprintf("[yellow]%s[-]: %s", tview.Escape(h.key), h.op))
 	}
 
 	return strings.Join(parts, "  ")
@@ -122,6 +125,7 @@ func (pane *TaskPane) keyHints() []keyHint {
 	}
 	hints = append(hints, keyHint{"enter", "Open"})
 	hints = append(hints, keyHint{"d", "Toggle done"})
+	hints = append(hints, keyHint{"=,-", "Priority"})
 	if inProject {
 		hints = append(hints, keyHint{"n", "New task"})
 	}
@@ -132,10 +136,15 @@ func (pane *TaskPane) keyHints() []keyHint {
 }
 
 // keyHints returns the context hints when the Task Detail pane is focused. The
-// edit/rename/export/date/day actions are all shown on-screen via underlined
-// buttons and the toggle hint, so only the un-advertised keys appear here.
+// edit/rename/export/toggle actions are advertised on-screen by underlined
+// buttons and the toggle hint; the date and priority keys are not, so they
+// appear here. ("d" edits the date field, hinted by the underlined "Due".)
 func (pane *TaskDetailPane) keyHints() []keyHint {
 	return []keyHint{
+		{"=,-", "Priority"},
+		{"o", "Today"},
+		{"[,]", "-/+ a day"},
+		{"u", "Unset date"},
 		{"↑,↓", "Scroll note"},
 		{"esc", "Back"},
 	}
