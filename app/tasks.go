@@ -31,6 +31,10 @@ type TaskPane struct {
 	// reloadList re-runs the loader for the currently displayed list (project or
 	// dynamic), so a filter change can re-render it. Set on every list load.
 	reloadList func()
+	// showingSplash is true while the pane displays only the splash/help text
+	// (no list loaded). In that state the pane refuses focus so a stray click or
+	// "t" can't quietly move focus off the Projects pane.
+	showingSplash bool
 }
 
 // NewTaskPane initializes and configures a TaskPane
@@ -81,8 +85,20 @@ func NewTaskPane(projectRepo repository.ProjectRepository, taskRepo repository.T
 	pane.SetBorder(true)
 	pane.updateTitle()
 	pane.setHintMessage()
+	pane.showingSplash = true // the splash is shown until a list is loaded
 
 	return &pane
+}
+
+// MouseHandler refuses mouse focus while only the splash is shown, so clicking
+// the empty Tasks area doesn't silently take focus from the Projects pane.
+func (pane *TaskPane) MouseHandler() func(tview.MouseAction, *tcell.EventMouse, func(tview.Primitive)) (bool, tview.Primitive) {
+	return func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(tview.Primitive)) (bool, tview.Primitive) {
+		if pane.showingSplash {
+			return false, nil
+		}
+		return pane.Flex.MouseHandler()(action, event, setFocus)
+	}
 }
 
 // ClearList removes all items from TaskPane
@@ -234,6 +250,7 @@ func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 // LoadProjectTasks loads tasks of a project in taskPane
 func (pane *TaskPane) LoadProjectTasks(project model.Project) {
 	pane.reloadList = func() { pane.LoadProjectTasks(project) }
+	pane.showingSplash = false
 
 	tasks, err := taskRepo.GetAllByProject(project)
 	if err != nil && err != storm.ErrNotFound {
@@ -273,6 +290,7 @@ func (pane *TaskPane) hideNewTaskInput() {
 // LoadDynamicList loads tasks based on logic key
 func (pane *TaskPane) LoadDynamicList(logic string) {
 	pane.reloadList = func() { pane.LoadDynamicList(logic) }
+	pane.showingSplash = false
 
 	var tasks []model.Task
 	var err error
@@ -337,6 +355,7 @@ func (pane *TaskPane) ShowSplash() {
 	pane.setHintMessage()
 	pane.RemoveItem(pane.hint) // avoid duplicating if already present
 	pane.AddItem(pane.hint, 0, 1, false)
+	pane.showingSplash = true
 }
 
 // sortTasks orders any task list: by priority first (A→B→C, unset counting as

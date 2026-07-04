@@ -123,8 +123,12 @@ func setKeyboardShortcuts() *tview.Application {
 			return nil
 		case 'q':
 		case 't':
-			app.SetFocus(taskPane)
-			contents.RemoveItem(taskDetailPane)
+			// Don't focus the Tasks pane when it only shows the splash; there's
+			// nothing to interact with and it would strand focus off Projects.
+			if !taskPane.showingSplash {
+				app.SetFocus(taskPane)
+				contents.RemoveItem(taskDetailPane)
+			}
 			return nil
 		}
 
