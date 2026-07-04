@@ -228,6 +228,7 @@ func (pane *ProjectPane) activateProject(idx int) {
 	removeThirdCol()
 	projectDetailPane.SetProject(pane.activeProject)
 	contents.AddItem(projectDetailPane, 25, 0, false)
+	thirdCol = projectDetailPane
 	app.SetFocus(taskPane)
 }
 

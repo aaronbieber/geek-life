@@ -25,6 +25,7 @@ var (
 	taskPane          *TaskPane
 	taskDetailPane    *TaskDetailPane
 	projectDetailPane *ProjectDetailPane
+	helpPane          *tview.TextView
 
 	db          *storm.DB
 	projectRepo repository.ProjectRepository
@@ -91,6 +92,22 @@ func setKeyboardShortcuts() *tview.Application {
 			return event
 		}
 
+		// While Help is open, only Esc/Left close it; other keys scroll it.
+		if helpShowing {
+			switch event.Key() {
+			case tcell.KeyEsc, tcell.KeyLeft:
+				hideHelp()
+				return nil
+			}
+			return event
+		}
+
+		// "?" opens Help from anywhere except free-text input (handled above).
+		if event.Rune() == '?' {
+			showHelp()
+			return nil
+		}
+
 		// While a key chord is active, the next key selects an option.
 		if filterChordActive {
 			return handleFilterChord(event)
@@ -134,6 +151,7 @@ func prepareContentPages() *tview.Flex {
 	taskPane = NewTaskPane(projectRepo, taskRepo)
 	projectDetailPane = NewProjectDetailPane()
 	taskDetailPane = NewTaskDetailPane(taskRepo)
+	helpPane = NewHelpPane()
 
 	contents = tview.NewFlex().
 		AddItem(projectPane, 25, 1, true).

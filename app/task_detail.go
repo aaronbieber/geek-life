@@ -325,6 +325,7 @@ func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey
 		taskPane.RefreshAfterEdit() // reflect date/color changes; re-sort dynamic lists
 		app.SetFocus(taskPane)
 		contents.AddItem(projectDetailPane, 25, 0, false)
+		thirdCol = projectDetailPane
 		return nil
 	case tcell.KeyDown:
 		td.taskDetailView.ScrollDown(1)

@@ -73,9 +73,15 @@ func ignoreKeyEvt() bool {
 // 	return func() { statusBar.showForSeconds(message, 5) }
 // }
 
+// thirdCol tracks which pane (if any) currently occupies the right-hand column of
+// the contents Flex: taskDetailPane, projectDetailPane, or nil. It lets Help
+// restore the previous layout when it closes.
+var thirdCol tview.Primitive
+
 func removeThirdCol() {
 	contents.RemoveItem(taskDetailPane)
 	contents.RemoveItem(projectDetailPane)
+	thirdCol = nil
 }
 
 func getTaskTitleColor(task model.Task) string {

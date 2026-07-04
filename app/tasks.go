@@ -364,7 +364,7 @@ func (pane *TaskPane) ActivateTask(idx int) {
 	taskDetailPane.SetTask(pane.activeTask)
 
 	contents.AddItem(taskDetailPane, 0, 3, false)
-
+	thirdCol = taskDetailPane
 }
 
 // ClearCompletedTasks removes tasks from current list that are in completed state

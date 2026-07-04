@@ -62,6 +62,10 @@ func currentKeyHints() []keyHint {
 // The specific input fields are checked before their containing panes, since a
 // pane reports HasFocus() when any of its children is focused.
 func contextKeyHints() []keyHint {
+	if helpShowing {
+		return []keyHint{{"esc", "Close help"}}
+	}
+
 	switch {
 	// Text-entry contexts: navigation and "new" are unavailable while typing, so
 	// only the field's own actions apply.
