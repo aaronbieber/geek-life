@@ -133,6 +133,15 @@ func (pane *ProjectPane) addSection(name string) {
 }
 
 func (pane *ProjectPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
+	switch event.Key() {
+	case tcell.KeyRight:
+		// Mimic Enter: open the highlighted list/project.
+		return tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
+	case tcell.KeyLeft:
+		// Nothing is to the left of the projects pane.
+		return nil
+	}
+
 	switch event.Rune() {
 	case 'J':
 		// Jump down to the first project if the cursor is above it and a project exists

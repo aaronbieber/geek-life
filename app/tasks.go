@@ -169,11 +169,16 @@ func (pane *TaskPane) persistTaskOrder() {
 }
 
 func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
-	// Handle Esc here (not via the list's done func) so it works even when the
-	// pane was focused by a mouse click rather than keyboard navigation.
-	if event.Key() == tcell.KeyEsc {
+	// Esc and Left move focus back to the projects pane. Handled here (not via
+	// the list's done func) so it works even when the pane was focused by a
+	// mouse click rather than keyboard navigation.
+	switch event.Key() {
+	case tcell.KeyEsc, tcell.KeyLeft:
 		app.SetFocus(projectPane)
 		return nil
+	case tcell.KeyRight:
+		// Mimic Enter: open the highlighted task.
+		return tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
 	}
 
 	// Shift+J / Shift+K reorder the selected task. Check the raw rune before

@@ -319,7 +319,8 @@ func writeToTmpFile(content string) (string, error) {
 
 func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
-	case tcell.KeyEsc:
+	case tcell.KeyEsc, tcell.KeyLeft:
+		// Esc and Left close the task and move focus back to the task list.
 		removeThirdCol()
 		taskPane.RefreshAfterEdit() // reflect date/color changes; re-sort dynamic lists
 		app.SetFocus(taskPane)
