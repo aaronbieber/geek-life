@@ -173,6 +173,9 @@ func (pane *ProjectPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey 
 	case 'd':
 		pane.startDeleteSelected()
 		return nil
+	case 'l':
+		// vim-style right: open the highlighted list/project (mimic Enter).
+		return tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
 	}
 
 	return event

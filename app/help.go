@@ -94,13 +94,14 @@ You rarely need to memorize keys — the screen shows them two ways:
     around, and it hides keys during typing.
 
 [yellow::b]Getting around[-::-]
+Navigation follows vim's [yellow]h[-] [yellow]j[-] [yellow]k[-] [yellow]l[-] keys, with arrows/Enter/Esc as synonyms.
   • Move up / down a list:   [yellow]j[-] [yellow]k[-]   or   [yellow]↑[-] [yellow]↓[-]
-  • Go right / open:         [yellow]→[-]   or   [yellow]Enter[-]
+  • Go right / open:         [yellow]l[-]   or   [yellow]→[-] / [yellow]Enter[-]
        From Projects, opens the selected list into the Tasks column.
        From Tasks, opens the selected task's detail.
-  • Go left / back:          [yellow]←[-]   or   [yellow]Esc[-]
+  • Go left / back:          [yellow]h[-]   or   [yellow]←[-] / [yellow]Esc[-]
        From Task Detail, closes it back to the task list.
-       From Tasks, returns to Projects (the [yellow]h[-] key does this too).
+       From Tasks, returns to Projects.
   • Jump straight to a column: [yellow]p[-] for Projects, [yellow]t[-] for Tasks.
 
 [yellow::b]Projects and dynamic lists[-::-]

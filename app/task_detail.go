@@ -331,13 +331,19 @@ func writeToTmpFile(content string) (string, error) {
 	return fileName, tmpFile.Close()
 }
 
+// close hides the task detail and returns focus to the task list, reflecting any
+// edits (date/priority/color) and re-sorting.
+func (td *TaskDetailPane) close() {
+	removeThirdCol()
+	taskPane.RefreshAfterEdit()
+	app.SetFocus(taskPane)
+}
+
 func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyEsc, tcell.KeyLeft:
 		// Esc and Left close the task and move focus back to the task list.
-		removeThirdCol()
-		taskPane.RefreshAfterEdit() // reflect date/color changes; re-sort dynamic lists
-		app.SetFocus(taskPane)
+		td.close()
 		return nil
 	case tcell.KeyDown:
 		td.taskDetailView.ScrollDown(1)
@@ -347,6 +353,10 @@ func (td *TaskDetailPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey
 		return nil
 	case tcell.KeyRune:
 		switch unicode.ToLower(event.Rune()) {
+		case 'h':
+			// vim-style left: close the detail back to the task list.
+			td.close()
+			return nil
 		case 'e':
 			td.activateEditor()
 			return nil

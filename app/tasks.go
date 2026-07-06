@@ -227,6 +227,9 @@ func (pane *TaskPane) handleShortcuts(event *tcell.EventKey) *tcell.EventKey {
 	case 'h':
 		app.SetFocus(projectPane)
 		return nil
+	case 'l':
+		// vim-style right: open the highlighted task (mimic Enter).
+		return tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
 	case 'n':
 		pane.showNewTaskInput()
 		return nil
